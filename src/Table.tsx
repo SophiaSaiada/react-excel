@@ -1,5 +1,9 @@
 import "react";
-import { FixedSizeGrid, FixedSizeList, GridOnScrollProps } from "react-window";
+import {
+  FixedSizeGrid,
+  VariableSizeList,
+  GridOnScrollProps,
+} from "react-window";
 import Cell from "./Cell";
 import SheetContext from "./SheetContext";
 import { useCallback, useRef, useState } from "react";
@@ -37,8 +41,8 @@ const Table = () => {
     row: number;
     column: number;
   } | null>(null);
-  const stickyColumnListRef = useRef<FixedSizeList>(null);
-  const stickyRowListRef = useRef<FixedSizeList>(null);
+  const stickyColumnListRef = useRef<VariableSizeList>(null);
+  const stickyRowListRef = useRef<VariableSizeList>(null);
   const onScroll = useCallback(
     ({
       scrollTop,
@@ -61,7 +65,7 @@ const Table = () => {
         setHoveredCellIndexes,
       }}
     >
-      <FixedSizeList
+      <VariableSizeList
         ref={stickyRowListRef}
         itemData={{ hovered: hoveredCellIndexes?.column }}
         style={{ overflowX: "hidden" }}
@@ -70,23 +74,25 @@ const Table = () => {
         width={window.screen.availWidth * 0.8 - 4 * rem}
         layout="horizontal"
         itemCount={SHEET_WIDTH}
-        itemSize={4 * rem}
+        itemSize={(index) => (index === SHEET_WIDTH - 1 ? 8 * rem : 4 * rem)}
       >
         {getStickyCellComponent("HORIZONTAL")}
-      </FixedSizeList>
+      </VariableSizeList>
 
-      <FixedSizeList
+      <VariableSizeList
         ref={stickyColumnListRef}
         itemData={{ hovered: hoveredCellIndexes?.row }}
         style={{ overflowY: "hidden" }}
         height={window.screen.availHeight * 0.8}
         layout="vertical"
         itemCount={SHEET_HEIGHT}
-        itemSize={2.5 * rem}
+        itemSize={(index) =>
+          index === SHEET_HEIGHT - 1 ? 6.4 * rem : 2.5 * rem
+        }
         width={4 * rem}
       >
         {getStickyCellComponent("VERTICAL")}
-      </FixedSizeList>
+      </VariableSizeList>
 
       <FixedSizeGrid
         columnCount={SHEET_HEIGHT}

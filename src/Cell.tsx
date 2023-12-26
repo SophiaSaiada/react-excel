@@ -4,7 +4,7 @@ import classNames from "classnames";
 import { GridChildComponentProps } from "react-window";
 
 export const CELL_SHARED_CLASSES =
-  "px-2 text-sm w-16 h-10 focus:outline-none bg-zinc-900";
+  "px-2 text-sm w-16 max-w-16 h-10 max-h-10 focus:outline-none bg-zinc-900";
 
 const Cell = ({ columnIndex, rowIndex, style }: GridChildComponentProps) => {
   const { values, setCell, setHoveredCellIndexes } = useContext(SheetContext)!;
