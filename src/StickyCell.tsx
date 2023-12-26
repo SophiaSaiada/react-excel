@@ -6,7 +6,7 @@ import { CELL_SHARED_CLASSES } from "./Cell";
 
 export const getStickyCellComponent =
   (mode: "VERTICAL" | "HORIZONTAL") =>
-  ({ index, style }: ListChildComponentProps) => {
+  ({ index, style, data }: ListChildComponentProps) => {
     return (
       <div
         style={style}
@@ -15,7 +15,8 @@ export const getStickyCellComponent =
           "leading-10 text-zinc-400",
           { "border-t": mode === "VERTICAL" || index === 0 },
           { "border-l": mode === "HORIZONTAL" || index === 0 },
-          "border-r border-b border-zinc-800"
+          "border-r border-b border-zinc-800",
+          { "bg-zinc-800": data.hovered === index }
         )}
       >
         {mode === "VERTICAL" ? numberToLetter(index) : (index + 1).toString()}

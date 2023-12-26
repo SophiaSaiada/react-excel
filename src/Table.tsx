@@ -33,6 +33,10 @@ const Table = () => {
 
   const rem = useRem();
 
+  const [hoveredCellIndexes, setHoveredCellIndexes] = useState<{
+    row: number;
+    column: number;
+  } | null>(null);
   const stickyColumnListRef = useRef<FixedSizeList>(null);
   const stickyRowListRef = useRef<FixedSizeList>(null);
   const onScroll = useCallback(
@@ -54,10 +58,12 @@ const Table = () => {
       value={{
         values: sheetValues,
         setCell,
+        setHoveredCellIndexes,
       }}
     >
       <FixedSizeList
         ref={stickyRowListRef}
+        itemData={{ hovered: hoveredCellIndexes?.column }}
         style={{ overflowX: "hidden" }}
         className="col-start-2"
         height={2.5 * rem + 1} // 1 pixel of border bottom
@@ -71,6 +77,7 @@ const Table = () => {
 
       <FixedSizeList
         ref={stickyColumnListRef}
+        itemData={{ hovered: hoveredCellIndexes?.row }}
         style={{ overflowY: "hidden" }}
         height={window.screen.availHeight * 0.8}
         layout="vertical"
