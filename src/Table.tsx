@@ -1,8 +1,9 @@
 import "react";
-import { VariableSizeGrid as Grid } from "react-window";
+import { FixedSizeGrid } from "react-window";
 import Cell from "./Cell";
 import SheetContext from "./SheetContext";
 import { useCallback, useState } from "react";
+import { useRem } from "./hooks/style";
 
 const SHEET_HEIGHT = 100;
 const SHEET_WIDTH = 100;
@@ -33,6 +34,8 @@ const Table = () => {
     []
   );
 
+  const rem = useRem();
+
   return (
     <SheetContext.Provider
       value={{
@@ -40,17 +43,17 @@ const Table = () => {
         setCell,
       }}
     >
-      <Grid
+      <FixedSizeGrid
         columnCount={SHEET_HEIGHT}
         // TODO: calculate width based on the content of the item.
-        columnWidth={() => 75}
+        columnWidth={4 * rem}
         height={window.screen.availHeight * 0.8}
         rowCount={SHEET_WIDTH}
-        rowHeight={() => 25}
+        rowHeight={2.5 * rem}
         width={window.screen.availWidth * 0.8}
       >
         {Cell}
-      </Grid>
+      </FixedSizeGrid>
     </SheetContext.Provider>
   );
 };
