@@ -13,13 +13,13 @@ export const getStickyCellComponent =
         className={classNames(
           CELL_SHARED_CLASSES,
           "leading-10 text-zinc-400",
-          { "border-t": mode === "VERTICAL" || index === 0 },
-          { "border-l": mode === "HORIZONTAL" || index === 0 },
+          { "border-t": mode === "HORIZONTAL" || index === 0 },
+          { "border-l": mode === "VERTICAL" || index === 0 },
           "border-r border-b border-zinc-800",
           { "bg-zinc-800": data.hovered === index }
         )}
       >
-        {mode === "VERTICAL" ? numberToLetter(index) : (index + 1).toString()}
+        {mode === "HORIZONTAL" ? numberToLetter(index) : (index + 1).toString()}
       </div>
     );
   };

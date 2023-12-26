@@ -67,12 +67,12 @@ const Table = () => {
         style={{ overflowX: "hidden" }}
         className="col-start-2"
         height={2.5 * rem + 1} // 1 pixel of border bottom
-        width={window.screen.availWidth * 0.8 - 4 * rem - 4}
+        width={window.screen.availWidth * 0.8 - 4 * rem}
         layout="horizontal"
         itemCount={SHEET_WIDTH}
         itemSize={4 * rem}
       >
-        {getStickyCellComponent("VERTICAL")}
+        {getStickyCellComponent("HORIZONTAL")}
       </FixedSizeList>
 
       <FixedSizeList
@@ -85,7 +85,7 @@ const Table = () => {
         itemSize={2.5 * rem}
         width={4 * rem}
       >
-        {getStickyCellComponent("HORIZONTAL")}
+        {getStickyCellComponent("VERTICAL")}
       </FixedSizeList>
 
       <FixedSizeGrid
