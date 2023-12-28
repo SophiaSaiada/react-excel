@@ -1,18 +1,20 @@
-import { useCallback, useContext } from "react";
-import SheetContext from "./SheetContext";
+import { useCallback } from "react";
 import clsx from "clsx";
 import { GridChildComponentProps } from "react-window";
+import { useStore } from "./store";
 
 function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
-  const { values, setCell, setHoveredCellIndexes } = useContext(SheetContext)!;
+  const value = useStore((state) => state.cells[rowIndex][columnIndex]);
+  const setCell = useStore((state) => state.setCell);
 
+  const setHoveredCell = useStore((state) => state.setHoveredCell);
   const onMouseEnter = useCallback(
-    () => setHoveredCellIndexes({ column: columnIndex, row: rowIndex }),
-    [columnIndex, rowIndex, setHoveredCellIndexes]
+    () => setHoveredCell({ column: columnIndex, row: rowIndex }),
+    [columnIndex, rowIndex, setHoveredCell]
   );
   const onMouseLeave = useCallback(
-    () => setHoveredCellIndexes(null),
-    [setHoveredCellIndexes]
+    () => setHoveredCell(null),
+    [setHoveredCell]
   );
 
   return (
@@ -29,7 +31,7 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         type="text"
-        value={values[rowIndex][columnIndex]}
+        value={value}
         onChange={(e) => setCell(rowIndex, columnIndex, e.target.value)}
       />
     </div>

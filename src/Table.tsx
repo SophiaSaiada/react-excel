@@ -5,42 +5,14 @@ import {
   GridOnScrollProps,
 } from "react-window";
 import Cell from "./Cell";
-import SheetContext from "./SheetContext";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import { useRem } from "./hooks/style";
 import RulerCell from "./RulerCell";
-
-const SHEET_HEIGHT = 100;
-const SHEET_WIDTH = 100;
+import { SHEET_HEIGHT, SHEET_WIDTH } from "./constants";
 
 const Table = () => {
-  const [sheetValues, setSheetValues] = useState(
-    new Array(SHEET_HEIGHT)
-      .fill(true)
-      .map(() => new Array(SHEET_WIDTH).fill(true).map(() => "0"))
-  );
-
-  const setCell = useCallback(
-    (rowIndex: number, columnIndex: number, value: string) => {
-      setSheetValues((currentSheetValues) =>
-        currentSheetValues.map((currentRow, mappedRowIndex) =>
-          mappedRowIndex !== rowIndex
-            ? currentRow
-            : currentRow.map((currentValue, mappedColumnIndex) =>
-                mappedColumnIndex !== columnIndex ? currentValue : value
-              )
-        )
-      );
-    },
-    []
-  );
-
   const rem = useRem();
 
-  const [hoveredCellIndexes, setHoveredCellIndexes] = useState<{
-    row: number;
-    column: number;
-  } | null>(null);
   const stickyColumnListRef = useRef<VariableSizeList>(null);
   const stickyRowListRef = useRef<VariableSizeList>(null);
   const onScroll = useCallback(
@@ -58,16 +30,10 @@ const Table = () => {
   );
 
   return (
-    <SheetContext.Provider
-      value={{
-        values: sheetValues,
-        setCell,
-        setHoveredCellIndexes,
-      }}
-    >
+    <>
       <VariableSizeList
         ref={stickyRowListRef}
-        itemData={{ hovered: hoveredCellIndexes?.column, mode: "HORIZONTAL" }}
+        itemData={{ mode: "HORIZONTAL" }}
         style={{ overflowX: "hidden" }}
         className="col-start-2"
         height={2.5 * rem + 1} // 1 pixel of border bottom
@@ -81,7 +47,7 @@ const Table = () => {
 
       <VariableSizeList
         ref={stickyColumnListRef}
-        itemData={{ hovered: hoveredCellIndexes?.row, mode: "VERTICAL" }}
+        itemData={{ mode: "VERTICAL" }}
         style={{ overflowY: "hidden" }}
         height={window.screen.availHeight * 0.8}
         layout="vertical"
@@ -106,7 +72,7 @@ const Table = () => {
       >
         {Cell}
       </FixedSizeGrid>
-    </SheetContext.Provider>
+    </>
   );
 };
 
