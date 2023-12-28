@@ -8,7 +8,7 @@ import Cell from "./Cell";
 import SheetContext from "./SheetContext";
 import { useCallback, useRef, useState } from "react";
 import { useRem } from "./hooks/style";
-import { getStickyCellComponent } from "./StickyCell";
+import RulerCell from "./RulerCell";
 
 const SHEET_HEIGHT = 100;
 const SHEET_WIDTH = 100;
@@ -67,7 +67,7 @@ const Table = () => {
     >
       <VariableSizeList
         ref={stickyRowListRef}
-        itemData={{ hovered: hoveredCellIndexes?.column }}
+        itemData={{ hovered: hoveredCellIndexes?.column, mode: "HORIZONTAL" }}
         style={{ overflowX: "hidden" }}
         className="col-start-2"
         height={2.5 * rem + 1} // 1 pixel of border bottom
@@ -76,12 +76,12 @@ const Table = () => {
         itemCount={SHEET_WIDTH}
         itemSize={(index) => (index === SHEET_WIDTH - 1 ? 8 * rem : 4 * rem)}
       >
-        {getStickyCellComponent("HORIZONTAL")}
+        {RulerCell}
       </VariableSizeList>
 
       <VariableSizeList
         ref={stickyColumnListRef}
-        itemData={{ hovered: hoveredCellIndexes?.row }}
+        itemData={{ hovered: hoveredCellIndexes?.row, mode: "VERTICAL" }}
         style={{ overflowY: "hidden" }}
         height={window.screen.availHeight * 0.8}
         layout="vertical"
@@ -91,7 +91,7 @@ const Table = () => {
         }
         width={4 * rem}
       >
-        {getStickyCellComponent("VERTICAL")}
+        {RulerCell}
       </VariableSizeList>
 
       <FixedSizeGrid
