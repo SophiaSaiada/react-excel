@@ -1,12 +1,9 @@
 import { useCallback, useContext } from "react";
 import SheetContext from "./SheetContext";
-import classNames from "classnames";
+import clsx from "clsx";
 import { GridChildComponentProps } from "react-window";
 
-export const CELL_SHARED_CLASSES =
-  "px-2 text-sm w-16 max-w-16 h-10 max-h-10 focus:outline-none bg-zinc-900";
-
-const Cell = ({ columnIndex, rowIndex, style }: GridChildComponentProps) => {
+function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
   const { values, setCell, setHoveredCellIndexes } = useContext(SheetContext)!;
 
   const onMouseEnter = useCallback(
@@ -21,8 +18,9 @@ const Cell = ({ columnIndex, rowIndex, style }: GridChildComponentProps) => {
   return (
     <div style={style}>
       <input
-        className={classNames(
-          CELL_SHARED_CLASSES,
+        className={clsx(
+          Cell.SHARED_STYLE.always,
+          Cell.SHARED_STYLE.notHover,
           "caret-green-600",
           "border-b border-r border-zinc-800",
           "hover:border-b-green-800 hover:border-b-2 hover:bg-zinc-800",
@@ -36,6 +34,11 @@ const Cell = ({ columnIndex, rowIndex, style }: GridChildComponentProps) => {
       />
     </div>
   );
+}
+
+Cell.SHARED_STYLE = {
+  always: "px-2 text-sm w-16 max-w-16 h-10 max-h-10 focus:outline-none",
+  notHover: "bg-zinc-900",
 };
 
 export default Cell;
