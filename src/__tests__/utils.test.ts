@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { numberToLetter } from "../utils";
+import { numberToLetter, stringArrayToEnum } from "../utils";
 
 test("numberToLetter base conversion", () => {
   expect(numberToLetter(0)).toBe("A");
@@ -13,4 +13,14 @@ test("numberToLetter base conversion", () => {
   expect(numberToLetter(52)).toBe("BA");
   expect(numberToLetter(676 + 26)).toBe("AAA");
   expect(numberToLetter(17576 + 702)).toBe("AAAA");
+});
+
+test("stringArrayToEnum", () => {
+  enum Expected {
+    A = "A",
+    B = "B",
+    C = "C",
+  }
+  const keys = ["A", "B", "C"] as const;
+  expect(stringArrayToEnum(keys)).toEqual(Expected);
 });

@@ -1,4 +1,4 @@
-export type FunctionName = "SUM" | "SUBTRACT" | "MAX" | "MIN";
+import type FunctionName from "./FunctionName";
 
 export interface CellExpression {}
 
@@ -19,3 +19,7 @@ export class FunctionCellExpression implements CellExpression {
     this.operands = operands;
   }
 }
+
+export type EvaluationResult =
+  | { status: "SUCCESS"; value: string }
+  | { status: "ERROR"; message: string };

@@ -55,6 +55,7 @@ test("literal", () => {
     parseCellRawValue("SUBTRACT(SUM(1,2),3))"),
     "SUBTRACT(SUM(1,2),3))"
   );
+  expectLiteralCellExpression(parseCellRawValue("=1,2"), "=1,2");
 });
 
 test("invalid formulas", () => {

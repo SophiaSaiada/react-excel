@@ -1,9 +1,9 @@
 import type { CellExpression } from "./types";
 import {
   FunctionCellExpression,
-  FunctionName,
   LiteralCellExpression,
 } from "./types";
+import FunctionName from "./FunctionName";
 
 export function parseCellRawValue(raw: string): CellExpression {
   if (!raw.match(/^=/)) {
@@ -18,7 +18,6 @@ export function parseCellRawValue(raw: string): CellExpression {
 
   while (rightPointer < formula.length) {
     if (formula[rightPointer] === "(") {
-      // TODO: validate that buffer is a valid FunctionName and not empty
       const functionExpression = new FunctionCellExpression(
         formula.slice(leftPointer, rightPointer) as FunctionName,
         []
