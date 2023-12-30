@@ -1,4 +1,10 @@
-import { useCallback } from "react";
+import {
+  ChangeEvent,
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import clsx from "clsx";
 import { GridChildComponentProps } from "react-window";
 import { useStore } from "./store";
@@ -6,6 +12,8 @@ import { useStore } from "./store";
 function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
   const value = useStore((state) => state.cells[rowIndex][columnIndex]);
   const setCell = useStore((state) => state.setCell);
+
+  const [intermediateValue, setIntermediateValue] = useState(value.raw);
 
   const setHoveredCell = useStore((state) => state.setHoveredCell);
   const onMouseEnter = useCallback(
@@ -17,8 +25,34 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
     [setHoveredCell]
   );
 
+  // keep the intermediate value in sync with store
+  useEffect(() => setIntermediateValue(value.raw), [value.raw]);
+  const onChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      setIntermediateValue(e.target.value);
+    },
+    [setIntermediateValue]
+  );
+
+  // we don't want to update the store in each key press, as it will cause unnecessary failed parsing attempts,
+  // so we update it only when the user finishes to type in the cell
+  const updateStore = useCallback(
+    () => setCell(rowIndex, columnIndex, intermediateValue),
+    [rowIndex, columnIndex, intermediateValue, setCell]
+  );
+
+  const onKeyUp = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        updateStore();
+      }
+    },
+    [updateStore]
+  );
+
   return (
-    <div style={style}>
+    // TODO: evaluate parsed cell, then display the result if the cell isn't focused, and remove the title
+    <div style={style} title={JSON.stringify(value.parsed)}>
       <input
         className={clsx(
           Cell.SHARED_STYLE.always,
@@ -31,8 +65,10 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         type="text"
-        value={value}
-        onChange={(e) => setCell(rowIndex, columnIndex, e.target.value)}
+        value={intermediateValue}
+        onBlur={updateStore}
+        onKeyUp={onKeyUp}
+        onChange={onChange}
       />
     </div>
   );

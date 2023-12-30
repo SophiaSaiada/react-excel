@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import { SHEET_HEIGHT, SHEET_WIDTH } from "./constants";
+import { parseCellRawValue } from "./core/parser";
+import { LiteralCellExpression, type CellExpression } from "./core/types";
 
 type Store = {
-  cells: string[][];
+  cells: { raw: string; parsed: CellExpression }[][];
   setCell: (rowIndex: number, columnIndex: number, value: string) => void;
 
   hoveredCell: {
@@ -20,14 +22,20 @@ type Store = {
 export const useStore = create<Store>((set) => ({
   cells: new Array(SHEET_HEIGHT)
     .fill(true)
-    .map(() => new Array(SHEET_WIDTH).fill(true).map(() => "0")),
+    .map(() =>
+      new Array(SHEET_WIDTH)
+        .fill(true)
+        .map(() => ({ raw: "0", parsed: new LiteralCellExpression("0") }))
+    ),
   setCell(rowIndex, columnIndex, value) {
     set((state) => ({
       cells: state.cells.map((currentRow, mappedRowIndex) =>
         mappedRowIndex !== rowIndex
           ? currentRow
           : currentRow.map((currentValue, mappedColumnIndex) =>
-              mappedColumnIndex !== columnIndex ? currentValue : value
+              mappedColumnIndex !== columnIndex
+                ? currentValue
+                : { raw: value, parsed: parseCellRawValue(value) }
             )
       ),
     }));
