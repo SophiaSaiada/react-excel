@@ -13,7 +13,7 @@ export function letterToNumber(letter: string): number {
     result *= 26;
     result += letter.charCodeAt(i) - 64;
   }
-  return result;
+  return result - 1;
 }
 
 export function stringArrayToEnum<T extends string>(

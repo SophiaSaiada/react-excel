@@ -1,18 +1,26 @@
 import { expect, test } from "vitest";
-import { numberToLetter, stringArrayToEnum } from "../utils";
+import { letterToNumber, numberToLetter, stringArrayToEnum } from "../utils";
 
-test("numberToLetter base conversion", () => {
-  expect(numberToLetter(0)).toBe("A");
-  expect(numberToLetter(2)).toBe("C");
-  expect(numberToLetter(9)).toBe("J");
-  expect(numberToLetter(10)).toBe("K");
-  expect(numberToLetter(25)).toBe("Z");
-  expect(numberToLetter(26)).toBe("AA");
-  expect(numberToLetter(51)).toBe("AZ");
-  expect(numberToLetter(52)).toBe("BA");
-  expect(numberToLetter(52)).toBe("BA");
-  expect(numberToLetter(676 + 26)).toBe("AAA");
-  expect(numberToLetter(17576 + 702)).toBe("AAAA");
+const numberLettersCases: [number, string][] = [
+  [0, "A"],
+  [2, "C"],
+  [9, "J"],
+  [10, "K"],
+  [25, "Z"],
+  [26, "AA"],
+  [51, "AZ"],
+  [52, "BA"],
+  [52, "BA"],
+  [676 + 26, "AAA"],
+  [17576 + 702, "AAAA"],
+];
+
+test.each(numberLettersCases)("numberToLetter: %i -> %s", (number, letter) => {
+  expect(numberToLetter(number)).toBe(letter);
+});
+
+test.each(numberLettersCases)("letterToNumber: %i <- %s", (number, letter) => {
+  expect(letterToNumber(letter)).toBe(number);
 });
 
 test("stringArrayToEnum", () => {
