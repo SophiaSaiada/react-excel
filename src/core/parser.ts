@@ -1,8 +1,5 @@
 import type { CellExpression } from "./types";
-import {
-  FunctionCellExpression,
-  LiteralCellExpression,
-} from "./types";
+import { FunctionCellExpression, LiteralCellExpression } from "./types";
 import FunctionName from "./FunctionName";
 
 export function parseCellRawValue(raw: string): CellExpression {

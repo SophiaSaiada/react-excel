@@ -56,8 +56,12 @@ test("test function error", () => {
   expect(parseThenEvaluateShouldFail("=SUBTRACT(1,2,3)")).to.be.equal(
     "SUBTRACT: Expected 2 operands got 3"
   );
-  expect(parseThenEvaluateShouldFail("=MIN()")).to.be.equal("MIN: Got no operands");
-  expect(parseThenEvaluateShouldFail("=MAX()")).to.be.equal("MAX: Got no operands");
+  expect(parseThenEvaluateShouldFail("=MIN()")).to.be.equal(
+    "MIN: Got no operands"
+  );
+  expect(parseThenEvaluateShouldFail("=MAX()")).to.be.equal(
+    "MAX: Got no operands"
+  );
 });
 
 test("test error propagation", () => {
