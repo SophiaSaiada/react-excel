@@ -1,21 +1,11 @@
 import { create } from "zustand";
-import { produce } from "immer";
-import { SHEET_HEIGHT, SHEET_WIDTH } from "./constants";
-import { parseCellRawValue } from "./core/parser";
-import {
-  LiteralCellExpression,
-  type CellExpression,
-  type EvaluationResult,
-} from "./core/types";
-import { evaluateCellExpression } from "./core/evaluator";
+import { Immutable } from "immer";
+import { Cell } from "./core/types";
+import { updateCellAndDependents } from "./core";
 
-type Store = {
-  cells: {
-    raw: string;
-    parsed: CellExpression;
-    evaluationResult: EvaluationResult;
-  }[][];
-  setCell: (rowIndex: number, columnIndex: number, value: string) => void;
+type Store = Immutable<{
+  cells: ReadonlyMap<string, Cell>;
+  setCell: (key: string, value: string) => void;
 
   hoveredCell: {
     row: number;
@@ -27,28 +17,14 @@ type Store = {
       column: number;
     } | null
   ) => void;
-};
+}>;
 
 export const useStore = create<Store>((set) => ({
-  cells: new Array(SHEET_HEIGHT).fill(true).map(() =>
-    new Array(SHEET_WIDTH).fill(true).map(() => ({
-      raw: "0",
-      parsed: new LiteralCellExpression("0"),
-      evaluationResult: { status: "SUCCESS", value: "0" },
-    }))
-  ),
-  setCell(rowIndex, columnIndex, value) {
-    const cellExpression = parseCellRawValue(value);
-    const evaluationResult = evaluateCellExpression(cellExpression);
-    set(
-      produce((draft: Store) => {
-        draft.cells[rowIndex][columnIndex] = {
-          raw: value,
-          parsed: parseCellRawValue(value),
-          evaluationResult,
-        };
-      })
-    );
+  cells: new Map(),
+  setCell(key, value) {
+    set((state) => ({
+      cells: updateCellAndDependents(state.cells, key, value),
+    }));
   },
 
   hoveredCell: null,

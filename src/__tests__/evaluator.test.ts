@@ -1,22 +1,5 @@
 import { expect, test } from "vitest";
-import { parseCellRawValue } from "../core/parser";
-import { evaluateCellExpression } from "../core/evaluator";
-
-function parseThenEvaluate(rawValue: string) {
-  const result = evaluateCellExpression(parseCellRawValue(rawValue));
-  expect(result).to.not.toBeFalsy();
-  expect(result).to.have.property("status", "SUCCESS");
-  expect(result).to.have.property("value");
-  return (result as { value: string }).value;
-}
-
-function parseThenEvaluateShouldFail(rawValue: string) {
-  const result = evaluateCellExpression(parseCellRawValue(rawValue));
-  expect(result).to.not.toBeFalsy();
-  expect(result).to.have.property("status", "ERROR");
-  expect(result).to.have.property("message");
-  return (result as { message: string }).message;
-}
+import { parseThenEvaluate, parseThenEvaluateShouldFail } from "./helpers";
 
 test("test single function call", () => {
   expect(parseThenEvaluate("=SUM()")).to.be.toEqual("0");
@@ -73,8 +56,8 @@ test("test error propagation", () => {
   );
 });
 
-test("test invalid argument to evaluateCellExpression", () => {
-  expect(() => evaluateCellExpression({ foo: 1 })).to.throw(
-    "Expected a FunctionCellExpression or a LiteralCellExpression"
+test("dynamic references should fail", () => {
+  expect(parseThenEvaluateShouldFail("=REF(REF(A1))", new Map())).to.be.equal(
+    "Dynamic cell references are not supported"
   );
 });

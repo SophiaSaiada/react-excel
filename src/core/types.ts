@@ -1,5 +1,13 @@
 import type FunctionName from "./FunctionName";
 
+export type Cell = {
+  raw: string;
+  parsed: CellExpression;
+  evaluationResult: EvaluationResult;
+  dependencies: string[];
+  dependents: string[];
+};
+
 export interface CellExpression {}
 
 export class LiteralCellExpression implements CellExpression {
@@ -21,5 +29,6 @@ export class FunctionCellExpression implements CellExpression {
 }
 
 export type EvaluationResult =
+  | { status: "PENDING" }
   | { status: "SUCCESS"; value: string }
   | { status: "ERROR"; message: string };

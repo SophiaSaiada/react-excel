@@ -7,15 +7,6 @@ export function numberToLetter(number: number): string {
   return result;
 }
 
-export function letterToNumber(letter: string): number {
-  let result = 0;
-  for (let i = 0; i < letter.length; i++) {
-    result *= 26;
-    result += letter.charCodeAt(i) - 64;
-  }
-  return result - 1;
-}
-
 export function stringArrayToEnum<T extends string>(
   stringArray: readonly T[]
 ): { [K in T]: K } {

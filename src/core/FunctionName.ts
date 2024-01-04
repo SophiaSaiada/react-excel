@@ -1,3 +1,3 @@
-type FunctionName = "SUM" | "SUBTRACT" | "MAX" | "MIN";
+type FunctionName = "REF" | "SUM" | "SUBTRACT" | "MAX" | "MIN";
 
 export default FunctionName;

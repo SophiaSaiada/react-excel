@@ -1,14 +1,63 @@
 import {
+  type Cell,
   CellExpression,
   EvaluationResult,
   FunctionCellExpression,
   LiteralCellExpression,
 } from "./types";
-import { FUNCTIONS } from "./functions";
+import { FUNCTIONS, handleRef } from "./functions";
 import FunctionName from "./FunctionName";
+import { ReferencedCells } from "./references";
+
+export const EMPTY_SUCCESSFUL_EVALUATION_RESULT: EvaluationResult = {
+  status: "SUCCESS",
+  value: "",
+};
 
 export function evaluateCellExpression(
-  expression: CellExpression
+  expression: CellExpression,
+  referencedCells: ReferencedCells,
+  cells: ReadonlyMap<string, Cell>
+): EvaluationResult {
+  if (referencedCells.dynamicReferences) {
+    return {
+      status: "ERROR",
+      message: "Dynamic cell references are not supported",
+    };
+  }
+
+  const directDependenciesEvaluationResult = new Map<
+    string,
+    EvaluationResult
+  >();
+  for (const referencedCellKey of referencedCells.cells) {
+    const referencedCell = cells.get(referencedCellKey.toUpperCase());
+    if (!referencedCell) {
+      directDependenciesEvaluationResult.set(
+        referencedCellKey,
+        EMPTY_SUCCESSFUL_EVALUATION_RESULT
+      );
+    } else {
+      const { evaluationResult } = referencedCell;
+      if (evaluationResult.status === "PENDING") {
+        return { status: "ERROR", message: "Dependency cycle detected" };
+      }
+      directDependenciesEvaluationResult.set(
+        referencedCellKey,
+        evaluationResult
+      );
+    }
+  }
+
+  return innerEvaluateCellExpression(
+    expression,
+    directDependenciesEvaluationResult
+  );
+}
+
+function innerEvaluateCellExpression(
+  expression: CellExpression,
+  directDependenciesEvaluationResult: ReadonlyMap<string, EvaluationResult>
 ): EvaluationResult {
   if (expression instanceof LiteralCellExpression) {
     return { status: "SUCCESS", value: expression.value };
@@ -21,7 +70,9 @@ export function evaluateCellExpression(
   }
 
   // TODO: caching
-  const evaluatedOperands = expression.operands.map(evaluateCellExpression);
+  const evaluatedOperands = expression.operands.map((operand) =>
+    innerEvaluateCellExpression(operand, directDependenciesEvaluationResult)
+  );
   const evaluatedOperandsErrors = evaluatedOperands.filter(
     (result) => result.status === "ERROR"
   );
@@ -33,20 +84,25 @@ export function evaluateCellExpression(
     (result) => (result as { value: string }).value
   );
 
-  const handler =
-    // we cast to FunctionName here to satisfy the type checker,
-    // but in the next line we actually check the received function name is legit
-    FUNCTIONS[expression.functionName.toUpperCase() as FunctionName];
-  if (handler === undefined) {
-    return {
-      status: "ERROR",
-      message: `Unknown function ${expression.functionName}`,
-    };
-  }
+  // we cast to FunctionName here to satisfy the type checker,
+  // but we actually check the received function name is legit when we attempt to find the handler
+  const functionName = expression.functionName.toUpperCase() as FunctionName;
 
   try {
-    const result = handler(evaluatedOperandsValues);
-    return { status: "SUCCESS", value: result };
+    if (functionName === "REF") {
+      return handleRef(expression, directDependenciesEvaluationResult);
+    } else {
+      const handler = FUNCTIONS[functionName];
+      if (handler === undefined) {
+        return {
+          status: "ERROR",
+          message: `Unknown function ${expression.functionName}`,
+        };
+      }
+
+      const result = handler(evaluatedOperandsValues);
+      return { status: "SUCCESS", value: result };
+    }
   } catch (error) {
     let message = "Unknown Error";
     if (error instanceof Error) message = error.message;

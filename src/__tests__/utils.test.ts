@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { letterToNumber, numberToLetter, stringArrayToEnum } from "../utils";
+import { numberToLetter, stringArrayToEnum } from "../utils";
 
 const numberLettersCases: [number, string][] = [
   [0, "A"],
@@ -17,10 +17,6 @@ const numberLettersCases: [number, string][] = [
 
 test.each(numberLettersCases)("numberToLetter: %i -> %s", (number, letter) => {
   expect(numberToLetter(number)).toBe(letter);
-});
-
-test.each(numberLettersCases)("letterToNumber: %i <- %s", (number, letter) => {
-  expect(letterToNumber(letter)).toBe(number);
 });
 
 test("stringArrayToEnum", () => {

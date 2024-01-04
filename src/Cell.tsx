@@ -8,13 +8,16 @@ import {
 import clsx from "clsx";
 import { GridChildComponentProps } from "react-window";
 import { useStore } from "./store";
+import { numberToLetter } from "./utils";
 
 function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
-  const value = useStore((state) => state.cells[rowIndex][columnIndex]);
+  const cellKey = `${numberToLetter(columnIndex)}${rowIndex + 1}`;
+
+  const value = useStore((state) => state.cells.get(cellKey));
   const setCell = useStore((state) => state.setCell);
 
   const [hasFocus, setHasFocus] = useState(false);
-  const [intermediateValue, setIntermediateValue] = useState(value.raw);
+  const [intermediateValue, setIntermediateValue] = useState(value?.raw ?? "");
 
   const setHoveredCell = useStore((state) => state.setHoveredCell);
   const onMouseEnter = useCallback(
@@ -27,7 +30,7 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
   );
 
   // keep the intermediate value in sync with store
-  useEffect(() => setIntermediateValue(value.raw), [value.raw]);
+  useEffect(() => value && setIntermediateValue(value.raw), [value]);
   const onChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
       setIntermediateValue(e.target.value);
@@ -42,8 +45,8 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
   // so we update it only when the user finishes to type in the cell
   const onBlur = useCallback(() => {
     setHasFocus(false);
-    setCell(rowIndex, columnIndex, intermediateValue);
-  }, [rowIndex, columnIndex, intermediateValue, setCell]);
+    setCell(cellKey, intermediateValue);
+  }, [cellKey, intermediateValue, setCell]);
 
   const onKeyUp = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -51,10 +54,14 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
     }
   }, []);
 
-  const evaluationResultToDisplay =
-    value.evaluationResult.status === "SUCCESS"
+  const evaluationResultToDisplay = value
+    ? value.evaluationResult.status === "SUCCESS"
       ? value.evaluationResult.value
-      : value.evaluationResult.message;
+      : value.evaluationResult.status === "ERROR"
+        ? value.evaluationResult.message
+        : // this should never be visible to the user, as we invalidate cells and re-evaluate them in the same state transaction
+          "⏳"
+    : "";
 
   return (
     <div style={style} title={evaluationResultToDisplay}>
@@ -64,9 +71,10 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
           Cell.SHARED_STYLE.notHover,
           "border-b border-r border-zinc-800",
           "hover:border-b-2 hover:bg-zinc-800",
-          value.evaluationResult.status === "SUCCESS"
-            ? "caret-green-600 hover:border-b-green-800 focus:border-b-green-600"
-            : "text-red-500 focus:text-white caret-red-600 hover:border-b-red-800 focus:border-b-red-600",
+          (!value || value.evaluationResult.status === "SUCCESS") &&
+            "caret-green-600 hover:border-b-green-800 focus:border-b-green-600",
+          value?.evaluationResult.status === "ERROR" &&
+            "text-red-500 focus:text-white caret-red-600 hover:border-b-red-800 focus:border-b-red-600",
           "focus:border-b-2 focus:bg-zinc-700"
         )}
         onMouseEnter={onMouseEnter}

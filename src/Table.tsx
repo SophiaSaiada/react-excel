@@ -5,12 +5,22 @@ import {
   GridOnScrollProps,
 } from "react-window";
 import Cell from "./Cell";
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useRem } from "./hooks/style";
 import RulerCell from "./RulerCell";
 import { SHEET_HEIGHT, SHEET_WIDTH } from "./constants";
+import { useStore } from "./store";
+import baseSheet from "./baseSheet.json";
 
+const storeInitialized = false;
 const Table = () => {
+  const setCell = useStore((state) => state.setCell);
+  useEffect(() => {
+    if (!storeInitialized) {
+      Object.entries(baseSheet).forEach(([key, value]) => setCell(key, value));
+    }
+  }, [setCell]);
+
   const rem = useRem();
 
   const stickyColumnListRef = useRef<VariableSizeList>(null);

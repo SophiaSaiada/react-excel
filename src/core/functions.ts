@@ -1,7 +1,12 @@
 import FunctionName from "./FunctionName";
+import {
+  EvaluationResult,
+  FunctionCellExpression,
+  LiteralCellExpression,
+} from "./types";
 
 export const FUNCTIONS: {
-  [K in FunctionName]: (evaluatedOperands: string[]) => string;
+  [K in Exclude<FunctionName, "REF">]: (evaluatedOperands: string[]) => string;
 } = {
   SUM: (evaluatedOperands) =>
     evaluatedOperands
@@ -24,3 +29,23 @@ export const FUNCTIONS: {
     return Math.min(...evaluatedOperands.map(parseFloat)).toString();
   },
 };
+
+export function handleRef(
+  expression: FunctionCellExpression,
+  directDependenciesEvaluationResult: ReadonlyMap<string, EvaluationResult>
+) {
+  if (expression.operands.length !== 1) {
+    throw new Error("Ranges aren't supported");
+  }
+
+  const cellKey = (
+    expression.operands[0] as LiteralCellExpression
+  ).value.toUpperCase(); // type already checked in getReferencedCells
+  const evaluationResult = directDependenciesEvaluationResult.get(cellKey);
+  if (!evaluationResult) {
+    throw new Error(
+      `Evaluation result of cell ${cellKey} was not supplied to evaluator`
+    );
+  }
+  return evaluationResult;
+}
