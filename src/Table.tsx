@@ -34,7 +34,7 @@ const Table = () => {
       <VariableSizeList
         ref={stickyRowListRef}
         itemData={{ mode: "HORIZONTAL" }}
-        style={{ overflowX: "hidden" }}
+        style={{ overflow: "hidden" }}
         className="col-start-2"
         height={2.5 * rem}
         width={window.screen.availWidth * 0.8 - 4 * rem}
