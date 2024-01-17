@@ -1,15 +1,11 @@
-import { type Cell, LiteralCellExpression } from "./types";
+import { type Cell } from "./types";
 import { Draft, Immutable, produce, enableMapSet } from "immer";
-import { parseCellRawValue } from "./parser";
+import { parseInput } from "./parser";
 import {
-  ReferencedCells,
   collectDependents,
   topologicalSortAndCycleDetection,
 } from "./references";
-import {
-  EMPTY_SUCCESSFUL_EVALUATION_RESULT,
-  evaluateCellExpression,
-} from "./evaluator";
+import { EMPTY_SUCCESSFUL_EVALUATION_RESULT, evaluate } from "./evaluator";
 import { getReferencedCells } from "./references";
 
 enableMapSet();
@@ -20,11 +16,11 @@ export const updateCellAndDependents = (
   raw: string
 ): Immutable<Map<string, Cell>> =>
   produce(immutableCells, (cells: Draft<Map<string, Cell>>) => {
-    const cellExpression = parseCellRawValue(raw);
-    const referencedCells = getReferencedCells(cellExpression);
+    const formula = getFormula(raw);
+    const referencedCells = getReferencedCells(formula);
     cells.set(key, {
       raw,
-      parsed: cellExpression,
+      formula,
       // `evaluationResult` will be invalidated anyway as a cell is a dependent of itself
       evaluationResult: EMPTY_SUCCESSFUL_EVALUATION_RESULT,
       // dependencies list will be updated in `updateDependenciesDependentsRelations`
@@ -39,6 +35,18 @@ export const updateCellAndDependents = (
     // cell and its dependents will be evaluated in the next call (a cell is a dependent of itself)
     evaluateAndTriggerDependentsReEvaluation(cells, allDependents);
   });
+
+function getFormula(raw: string) {
+  if (!raw.match(/^=/)) {
+    return null;
+  }
+  try {
+    return parseInput(raw);
+  } catch (e: unknown) {
+    console.warn("ParsingOrLexingError", e); // TODO: give feedback to the user
+    return null;
+  }
+}
 
 function getAndInvalidateAllDependents(
   cells: Map<string, Draft<Cell>>,
@@ -56,12 +64,12 @@ function getAndInvalidateAllDependents(
 function updateDependenciesDependentsRelations(
   cells: Map<string, Draft<Cell>>,
   key: string,
-  referencedCells: ReferencedCells
+  referencedCells: string[]
 ) {
   const pastDependencies = cells
     .get(key)!
-    .dependencies.filter((k) => !referencedCells.cells.includes(k));
-  cells.get(key)!.dependencies = referencedCells.cells;
+    .dependencies.filter((k) => !referencedCells.includes(k));
+  cells.get(key)!.dependencies = referencedCells;
   for (const pastDependency of pastDependencies) {
     // release cell from irrelevant dependents cell's dependencies lists
     cells.get(pastDependency)!.dependents = cells
@@ -70,11 +78,11 @@ function updateDependenciesDependentsRelations(
   }
 
   // update new dependencies cells' dependencies list
-  referencedCells.cells.forEach((referencedCell) => {
+  referencedCells.forEach((referencedCell) => {
     if (!cells.has(referencedCell)) {
       cells.set(referencedCell, {
         raw: "",
-        parsed: new LiteralCellExpression(""),
+        formula: null,
         evaluationResult: EMPTY_SUCCESSFUL_EVALUATION_RESULT,
         dependencies: [],
         dependents: [],
@@ -99,11 +107,11 @@ function evaluateAndTriggerDependentsReEvaluation(
   // evaluate inOrDependsOnCycle cells last, the dependency cycle error will propagate to them
   sorted.push(inOrDependsOnCycle);
   sorted.forEach((level) =>
-    level.forEach((dependent) => {
-      const dependentParsed = cells.get(dependent)!.parsed; // non-existing cell can't be a dependent og another
-      cells.get(dependent)!.evaluationResult = evaluateCellExpression(
-        dependentParsed,
-        getReferencedCells(dependentParsed),
+    level.forEach((dependentKey) => {
+      const dependent = cells.get(dependentKey)!; // non-existing cell can't be a dependent og another
+      cells.get(dependentKey)!.evaluationResult = evaluate(
+        dependent,
+        getReferencedCells(dependent.formula),
         cells
       );
     })

@@ -1,20 +1,26 @@
 import { expect } from "vitest";
 import { getReferencedCells } from "../core/references";
-import { evaluateCellExpression } from "../core/evaluator";
-import { parseCellRawValue } from "../core/parser";
-import { Cell, LiteralCellExpression } from "../core/types";
+import { evaluate } from "../core/evaluator";
+import { parseInput } from "../core/parser";
+import { Cell } from "../core/types";
 import baseSheet from "../baseSheet.json";
 import { updateCellAndDependents } from "../core";
 import { Immutable } from "immer";
 
 export function parseThenEvaluate(
-  rawValue: string,
+  raw: string,
   cells: Map<string, Cell> = new Map()
 ) {
-  const cellExpression = parseCellRawValue(rawValue);
-  const result = evaluateCellExpression(
-    cellExpression,
-    getReferencedCells(cellExpression),
+  const formula = parseInput(raw);
+  const result = evaluate(
+    {
+      raw,
+      formula,
+      evaluationResult: { status: "PENDING" },
+      dependencies: getReferencedCells(formula),
+      dependents: [],
+    },
+    getReferencedCells(formula),
     cells
   );
   expect(result).to.not.toBeFalsy();
@@ -24,13 +30,19 @@ export function parseThenEvaluate(
 }
 
 export function parseThenEvaluateShouldFail(
-  rawValue: string,
+  raw: string,
   cells: Map<string, Cell> = new Map()
 ) {
-  const cellExpression = parseCellRawValue(rawValue);
-  const result = evaluateCellExpression(
-    cellExpression,
-    getReferencedCells(cellExpression),
+  const formula = parseInput(raw);
+  const result = evaluate(
+    {
+      raw,
+      formula,
+      evaluationResult: { status: "PENDING" },
+      dependencies: getReferencedCells(formula),
+      dependents: [],
+    },
+    getReferencedCells(formula),
     cells
   );
   expect(result).to.not.toBeFalsy();
@@ -47,10 +59,10 @@ export const getExampleCellsWithoutRefs = () =>
         dependencies: [],
         dependents: [],
         raw: "1",
-        parsed: new LiteralCellExpression("1"),
+        formula: null,
         evaluationResult: {
           status: "SUCCESS",
-          value: "1",
+          value: 1,
         },
       } as Cell,
     ],
@@ -60,10 +72,10 @@ export const getExampleCellsWithoutRefs = () =>
         dependencies: [],
         dependents: [],
         raw: "2",
-        parsed: new LiteralCellExpression("2"),
+        formula: null,
         evaluationResult: {
           status: "SUCCESS",
-          value: "2",
+          value: 2,
         },
       } as Cell,
     ],
@@ -77,11 +89,11 @@ export const getExampleCellsWithRefs = () => {
       {
         dependencies: ["A1"],
         dependents: ["A3"],
-        raw: "=ref(A1)",
-        parsed: parseCellRawValue("=ref(A1)"),
+        raw: "=A1",
+        formula: parseInput("=A1"),
         evaluationResult: {
           status: "SUCCESS",
-          value: "1",
+          value: 1,
         },
       } as Cell,
     ],
@@ -90,11 +102,11 @@ export const getExampleCellsWithRefs = () => {
       {
         dependencies: ["A2", "B2"],
         dependents: [],
-        raw: "=SUM(ref(A2),REF(B1))",
-        parsed: parseCellRawValue("=SUM(ref(A2),REF(B2))"),
+        raw: "=SUM(a2,B2)",
+        formula: parseInput("=SUM(a2,B2)"),
         evaluationResult: {
           status: "SUCCESS",
-          value: "2",
+          value: 3,
         },
       } as Cell,
     ],

@@ -4,20 +4,19 @@ import {
   getReferencedCells,
   topologicalSortAndCycleDetection,
 } from "../core/references";
-import { Cell, EvaluationResult, LiteralCellExpression } from "../core/types";
+import { Cell, EvaluationResult } from "../core/types";
 import {
   getExampleCellsWithRefs,
   getExampleCellsWithoutRefs,
   parseThenEvaluate,
-  parseThenEvaluateShouldFail,
 } from "./helpers";
-import { parseCellRawValue } from "../core/parser";
+import { parseInput } from "../core/parser";
 
 const createCellWithDependencies = (dependencies: string[]) => ({
   dependencies,
   dependents: [],
   raw: "",
-  parsed: new LiteralCellExpression(""),
+  formula: null,
   evaluationResult: { status: "PENDING" } as EvaluationResult,
 });
 
@@ -147,84 +146,44 @@ test("topological sort single cell", () => {
 });
 
 test.each([
-  ["=ref(A1)", ["A1"]],
-  ["=rEf(A1)", ["A1"]],
-  ["=rEf(a1)", ["A1"]],
-  ["=SUM(1,SUBTRACT(REF(A1)),REF(a2))", ["A1", "A2"]],
-  ["=SUM(1,SUBTRACT(REF(a1)),REF(A1))", ["A1"]],
-  ["=SUM(1,REF(A2),SUBTRACT(REF(A1)))", ["A2", "A1"]],
-  ["=REF(Z99)", ["Z99"]],
-  ["=SUM(REF(Z99),A1)", ["Z99"]],
-  ["=SUM(Z99,A1)", []],
-  ["=MAX(REF(A2))", ["A2"]],
+  ["=A1", ["A1"]],
+  ["=a1", ["A1"]],
+  ["=SUM(1,SUBTRACT(A1),a2)", ["A1", "A2"]],
+  ["=SUM(1,SUBTRACT(a1),A1)", ["A1"]],
+  ["=SUM(1,A2,SUBTRACT(A1))", ["A2", "A1"]],
+  ["=Z99", ["Z99"]],
+  [`=SUM(Z99,"A1")`, ["Z99"]],
+  [`=SUM("Z99","A1")`, []],
+  ["=MAX(A2)", ["A2"]],
   [
-    "=SUM(1,REF(A1),REF(A2),REF(A3),SUBTRACT(REF(A1),SUBTRACT(REF(A4),SUBTRACT(REF(A5)))))",
+    "=SUM(1,A1,A2,A3,SUBTRACT(A1,SUBTRACT(A4,SUBTRACT(A5))))",
     ["A1", "A2", "A3", "A4", "A5"],
   ],
 ])("test getReferencedCells: %s", (raw, expected) => {
-  expect(getReferencedCells(parseCellRawValue(raw))).to.be.deep.equal({
-    dynamicReferences: false,
-    cells: expected,
-  });
+  expect(getReferencedCells(parseInput(raw))).to.be.deep.equal(expected);
 });
 
 test.each([
-  "=REF(REF(A2))",
-  "=REF(SUM(A2))",
-  "=REF(SUM(A2, 1))",
-  "=SUM(REF(SUM(A2, 1)))",
-  "=SUM(REF(REF(A2)))",
-  "=MAX(REF(REF(A2)))",
-  "=MAX(REF(REF(A2)),1)",
-])("Dynamic cell references are not supported: %s", (raw) => {
-  expect(getReferencedCells(parseCellRawValue(raw))).to.deep.equal({
-    dynamicReferences: true,
-    cells: [],
-  });
-});
-
-test("test REF", () => {
-  expect(
-    parseThenEvaluate("=REF(A1)", getExampleCellsWithoutRefs())
-  ).to.be.equal("1");
-  expect(
-    parseThenEvaluate("=SUM(REF(A1),REF(A1))", getExampleCellsWithoutRefs())
-  ).to.be.equal("2");
-  expect(
-    parseThenEvaluate("=SUM(REF(A1),1,REF(B2))", getExampleCellsWithoutRefs())
-  ).to.be.equal("4");
-  expect(
-    parseThenEvaluate("=MAX(REF(A1),1,REF(B2))", getExampleCellsWithoutRefs())
-  ).to.be.equal("2");
-  expect(
-    parseThenEvaluate(
-      "=SUM(REF(A1),1,SUBTRACT(REF(B2),REF(A1)))",
-      getExampleCellsWithoutRefs()
-    )
-  ).to.be.equal("3");
+  ["=A1", 1],
+  ["=A1+A1", 2],
+  ["=A1+1+(B2)", 4],
+  ["=MAX(A1,1,B2)", 2],
+  ["=A1+1+B2-A1", 3],
+])("test REF: %s => %s", (raw, expected) => {
+  expect(parseThenEvaluate(raw, getExampleCellsWithoutRefs())).to.be.equal(
+    expected
+  );
 });
 test("referencing empty cell", () => {
+  expect(parseThenEvaluate("=A3", getExampleCellsWithoutRefs())).to.be.equal(
+    ""
+  );
   expect(
-    parseThenEvaluate("=REF(A3)", getExampleCellsWithoutRefs())
+    parseThenEvaluate("=ZZ0999", getExampleCellsWithoutRefs())
   ).to.be.equal("");
   expect(
-    parseThenEvaluate("=REF(ZZ0999)", getExampleCellsWithoutRefs())
-  ).to.be.equal("");
-  expect(
-    parseThenEvaluate("=SUM(REF(ZZ0999),1)", getExampleCellsWithoutRefs())
-  ).to.be.equal("NaN");
-});
-
-test("referencing range should fail", () => {
-  expect(
-    parseThenEvaluateShouldFail("=REF(B1, B2)", getExampleCellsWithoutRefs())
-  ).to.be.equal("REF: Ranges aren't supported");
-  expect(
-    parseThenEvaluateShouldFail(
-      "=REF(B1, B2, A3)",
-      getExampleCellsWithoutRefs()
-    )
-  ).to.be.equal("REF: Ranges aren't supported");
+    parseThenEvaluate("=ZZ0999+1", getExampleCellsWithoutRefs())
+  ).to.be.equal(1);
 });
 
 test("collectDependents", () => {

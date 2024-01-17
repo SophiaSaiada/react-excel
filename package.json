@@ -11,8 +11,10 @@
     "preview": "vite preview",
     "test": "vitest --typecheck",
     "coverage": "vitest run --coverage",
+    "generate-parser": "ts-node --esm ./scripts/gen_dts_signatures.ts",
     "prepare": "husky install"
   },
+  "//": "The `generate-parser` script won't work if you run it through VSCode's NPM Scripts panel, run it in the terminal",
   "husky": {
     "pre-commit": "lint-staged"
   },
@@ -23,6 +25,7 @@
     ]
   },
   "dependencies": {
+    "chevrotain": "^11.0.3",
     "clsx": "^2.0.0",
     "immer": "^10.0.3",
     "react": "^18.2.0",
@@ -50,7 +53,8 @@
     "postcss": "^8.4.32",
     "prettier": "3.1.1",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
     "vite": "^5.0.8",
     "vitest": "^1.1.0"
   }

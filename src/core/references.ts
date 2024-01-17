@@ -1,9 +1,8 @@
-import {
-  Cell,
-  CellExpression,
-  FunctionCellExpression,
-  LiteralCellExpression,
-} from "./types";
+import { normalizeCellKey } from "../utils";
+import { CellReferenceLiteral } from "./lexer";
+import { Cell } from "./types";
+import type { CstNode, CstElement } from "chevrotain";
+import { tokenMatcher } from "chevrotain";
 
 export function collectDependents(
   cells: ReadonlyMap<string, Cell>,
@@ -97,55 +96,21 @@ export function topologicalSortAndCycleDetection(
   return { sorted, inOrDependsOnCycle };
 }
 
-export type ReferencedCells = {
-  dynamicReferences: boolean;
-  cells: string[];
-};
-
-export function getReferencedCells(
-  expression: CellExpression
-): ReferencedCells {
-  if (expression instanceof LiteralCellExpression)
-    return { dynamicReferences: false, cells: [] };
-  if (expression instanceof FunctionCellExpression) {
-    const { operands } = expression;
-
-    // TODO: maybe introduce RefCellExpression instead of using FunctionCellExpression
-    if (expression.functionName.toUpperCase() === "REF") {
-      if (
-        !operands.every((operand) => operand instanceof LiteralCellExpression)
-      ) {
-        return { dynamicReferences: true, cells: [] };
-      }
-
-      return {
-        dynamicReferences: false,
-        cells: (operands as LiteralCellExpression[]).map((operand) =>
-          operand.value.toUpperCase()
-        ),
-      };
-    }
-
-    return expression.operands.reduce<ReferencedCells>(
-      (acc, operand) => {
-        if (acc.dynamicReferences) {
-          return acc;
-        }
-        const operandReferencedCells = getReferencedCells(operand);
-        return {
-          dynamicReferences: operandReferencedCells.dynamicReferences,
-          cells: [
-            ...acc.cells,
-            ...operandReferencedCells.cells.filter(
-              (c) => !acc.cells.includes(c)
-            ),
-          ],
-        };
-      },
-      { dynamicReferences: false, cells: [] }
-    );
+export function getReferencedCells(element: CstElement | null): string[] {
+  if (element === null) {
+    return [];
   }
-  throw new Error(
-    "Expected a FunctionCellExpression or a LiteralCellExpression"
-  );
+  if ("children" in element) {
+    return [
+      ...new Set(
+        Object.values((element as CstNode).children).flatMap((child) =>
+          child.flatMap(getReferencedCells)
+        )
+      ),
+    ];
+  }
+  if (tokenMatcher(element, CellReferenceLiteral)) {
+    return [normalizeCellKey(element.image)];
+  }
+  return [];
 }

@@ -7,6 +7,7 @@ import { exportsForTesting, updateCellAndDependents } from "../core/index";
 import * as evaluator from "../core/evaluator";
 import { getReferencedCells } from "../core/references";
 import * as references from "../core/references";
+import { EvaluationResultValue } from "../core/types";
 const {
   updateDependenciesDependentsRelations,
   evaluateAndTriggerDependentsReEvaluation,
@@ -36,10 +37,7 @@ test.each([
   (key, referencedCellsSteps, expected) => {
     const cells = getExampleCellsWithRefs();
     for (const referencedCells of referencedCellsSteps) {
-      updateDependenciesDependentsRelations(cells, key, {
-        dynamicReferences: true,
-        cells: referencedCells,
-      });
+      updateDependenciesDependentsRelations(cells, key, referencedCells);
     }
     for (const [k, v] of Object.entries(expected)) {
       expect(cells.get(k)!.dependents).to.deep.equal(
@@ -64,7 +62,7 @@ test.each([[["A1", "A2", "A3"]], [["A1", "B2", "A2", "A3"]], [["B2", "A3"]]])(
       base.sorted = base.sorted.map((s) => [...s].sort());
       return base;
     });
-    const spy = vi.spyOn(evaluator, "evaluateCellExpression");
+    const spy = vi.spyOn(evaluator, "evaluate");
 
     evaluateAndTriggerDependentsReEvaluation(
       cells,
@@ -74,11 +72,48 @@ test.each([[["A1", "A2", "A3"]], [["A1", "B2", "A2", "A3"]], [["B2", "A3"]]])(
     for (const [index, key] of dependents.entries()) {
       expect(spy).to.have.been.nthCalledWith(
         index + 1,
-        cells.get(key)!.parsed,
-        getReferencedCells(cells.get(key)!.parsed),
+        cells.get(key)!,
+        getReferencedCells(cells.get(key)!.formula),
         expect.anything()
       );
     }
+  }
+);
+
+test.each([
+  // valid formula, valid result, invalid formula
+  ["=-1", -1, "=1-"],
+  ["=1+2-1+(2)", 4, "=1+2-1+2)"],
+  ["=1+((2-1+2))", 4, "=1+((2-1+2)"],
+  ["=1", 1, "1"],
+  ["=0+2", 2, "=+2"],
+  ["=min(1)", 1, "=min1(1)"],
+  [`="aaa"`, "aaa", `="aaa`],
+  ["=1+2", 3, "1+2"],
+  [`="aaa"""`, `aaa"`, `=aaa"`],
+])(
+  "Valid %s results in %s, invalid %s results in raw value",
+  (validFormula, validResult, invalid) => {
+    let cells = getExampleComplexCellsWithRefs();
+    cells = updateCellAndDependents(cells, "A1", validFormula);
+    vi.spyOn(console, "warn").mockImplementationOnce(() => undefined);
+    cells = updateCellAndDependents(cells, "B2", invalid);
+    expect(cells.get("A1")!.evaluationResult).to.have.property(
+      "status",
+      "SUCCESS"
+    );
+    expect(cells.get("A1")!.evaluationResult).to.have.property(
+      "value",
+      validResult
+    );
+    expect(cells.get("B2")!.evaluationResult).to.have.property(
+      "status",
+      "SUCCESS"
+    );
+    expect(cells.get("B2")!.evaluationResult).to.have.property(
+      "value",
+      invalid === "1" ? 1 : invalid // special case in which the value is casted to a number
+    );
   }
 );
 
@@ -89,7 +124,7 @@ test("reactivity", () => {
 
   function expectValues(
     action: { key: string; value: string } | undefined,
-    expectedValues: Record<string, string | { error: string }>
+    expectedValues: Record<string, EvaluationResultValue | { error: string }>
   ) {
     if (action !== undefined) {
       cells = updateCellAndDependents(cells, action.key, action.value);
@@ -117,44 +152,44 @@ test("reactivity", () => {
   }
 
   expectValues(undefined, {
-    A1: "10",
+    A1: 10,
     B1: "+1 =>",
-    C1: "11",
+    C1: 11,
     C2: "+ A1 =>",
-    D2: "21",
+    D2: 21,
     D3: "MAX(D2,",
-    E3: "9",
+    E3: 9,
     F3: ") =>",
-    G3: "21",
+    G3: 21,
   });
 
   expectValues(
     { key: "A1", value: "5" },
     {
-      A1: "5",
+      A1: 5,
       B1: "+1 =>",
-      C1: "6",
+      C1: 6,
       C2: "+ A1 =>",
-      D2: "11",
+      D2: 11,
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
-      G3: "11",
+      G3: 11,
     }
   );
 
   expectValues(
     { key: "A1", value: "2" },
     {
-      A1: "2",
+      A1: 2,
       B1: "+1 =>",
-      C1: "3",
+      C1: 3,
       C2: "+ A1 =>",
-      D2: "5",
+      D2: 5,
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
-      G3: "9",
+      G3: 9,
     }
   );
 
@@ -163,18 +198,18 @@ test("reactivity", () => {
     {
       A1: "",
       B1: "+1 =>",
-      C1: "NaN",
+      C1: 1,
       C2: "+ A1 =>",
-      D2: "NaN",
+      D2: 1,
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
-      G3: "NaN",
+      G3: 9,
     }
   );
 
   expectValues(
-    { key: "A1", value: "=ReF(d2)" },
+    { key: "A1", value: "=d2" },
     {
       A1: DEPENDENCY_CYCLE_ERROR,
       B1: "+1 =>",
@@ -182,7 +217,7 @@ test("reactivity", () => {
       C2: "+ A1 =>",
       D2: DEPENDENCY_CYCLE_ERROR,
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
       G3: DEPENDENCY_CYCLE_ERROR,
     }
@@ -193,18 +228,18 @@ test("reactivity", () => {
     {
       A1: "hi",
       B1: "+1 =>",
-      C1: "NaN",
+      C1: { error: "Cannot add or subtract a string" },
       C2: "+ A1 =>",
-      D2: "NaN",
+      D2: { error: "Cannot add or subtract a string" },
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
-      G3: "NaN",
+      G3: { error: "Cannot add or subtract a string" },
     }
   );
 
   expectValues(
-    { key: "C1", value: "=REF(D2)" },
+    { key: "C1", value: "=D2" },
     {
       A1: "hi",
       B1: "+1 =>",
@@ -212,29 +247,29 @@ test("reactivity", () => {
       C2: "+ A1 =>",
       D2: DEPENDENCY_CYCLE_ERROR,
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
       G3: DEPENDENCY_CYCLE_ERROR,
     }
   );
 
   expectValues(
-    { key: "C1", value: "=sum(ref(a1),2)" },
+    { key: "C1", value: "=a1+(2)" },
     {
       A1: "hi",
       B1: "+1 =>",
-      C1: "NaN",
+      C1: { error: "Cannot add or subtract a string" },
       C2: "+ A1 =>",
-      D2: "NaN",
+      D2: { error: "Cannot add or subtract a string" },
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
-      G3: "NaN",
+      G3: { error: "Cannot add or subtract a string" },
     }
   );
 
   expectValues(
-    { key: "C1", value: "=REF(c1)" },
+    { key: "C1", value: "=c1" },
     {
       A1: "hi",
       B1: "+1 =>",
@@ -242,14 +277,14 @@ test("reactivity", () => {
       C2: "+ A1 =>",
       D2: DEPENDENCY_CYCLE_ERROR,
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
       G3: DEPENDENCY_CYCLE_ERROR,
     }
   );
 
   expectValues(
-    { key: "G3", value: "=ref(a1)" },
+    { key: "G3", value: "=a1" },
     {
       A1: "hi",
       B1: "+1 =>",
@@ -257,56 +292,56 @@ test("reactivity", () => {
       C2: "+ A1 =>",
       D2: DEPENDENCY_CYCLE_ERROR,
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
       G3: "hi",
     }
   );
 
   expectValues(
-    { key: "A1", value: "=SUM(1,2,3)" },
+    { key: "A1", value: "=1+2+3" },
     {
-      A1: "6",
+      A1: 6,
       B1: "+1 =>",
       C1: DEPENDENCY_CYCLE_ERROR,
       C2: "+ A1 =>",
       D2: DEPENDENCY_CYCLE_ERROR,
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
-      G3: "6",
+      G3: 6,
     }
   );
 
   expectValues(
-    { key: "G4", value: "=SUM(ref(a1),ref(a1),1,ref(g3))" },
+    { key: "G4", value: "=a1+a1+1+g3" },
     {
-      A1: "6",
+      A1: 6,
       B1: "+1 =>",
       C1: DEPENDENCY_CYCLE_ERROR,
       C2: "+ A1 =>",
       D2: DEPENDENCY_CYCLE_ERROR,
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
-      G3: "6",
-      G4: "19",
+      G3: 6,
+      G4: 19,
     }
   );
 
   expectValues(
-    { key: "C1", value: "=SUM(REF(a1),1)" },
+    { key: "C1", value: "=a1+1" },
     {
-      A1: "6",
+      A1: 6,
       B1: "+1 =>",
-      C1: "7",
+      C1: 7,
       C2: "+ A1 =>",
-      D2: "13",
+      D2: 13,
       D3: "MAX(D2,",
-      E3: "9",
+      E3: 9,
       F3: ") =>",
-      G3: "6",
-      G4: "19",
+      G3: 6,
+      G4: 19,
     }
   );
 });

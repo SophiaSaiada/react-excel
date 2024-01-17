@@ -1,71 +1,114 @@
-import type { CellExpression } from "./types";
-import { FunctionCellExpression, LiteralCellExpression } from "./types";
-import FunctionName from "./FunctionName";
+import { CstParser, CstNode } from "chevrotain";
+import {
+  AdditionOperator,
+  CellReferenceLiteral,
+  Comma,
+  Equal,
+  FormulaLexer,
+  FunctionName,
+  LParen,
+  Minus,
+  MultiplicationOperator,
+  NonNegativeNumberLiteral,
+  RParen,
+  StringLiteral,
+  allTokens,
+} from "./lexer.ts"; // the .ts extension is needed to make this file executable with ts-node
+import { FormulaCstNode } from "./generated/FormulaParser";
 
-export function parseCellRawValue(raw: string): CellExpression {
-  if (!raw.match(/^=/)) {
-    return new LiteralCellExpression(raw);
+class FormulaParser extends CstParser {
+  constructor() {
+    super(allTokens);
+    this.performSelfAnalysis();
   }
 
-  const formula = raw.slice(1);
-  let leftPointer = 0,
-    rightPointer = 0;
+  public formula = this.RULE("formula", () => {
+    this.CONSUME(Equal);
+    this.SUBRULE(this.additionExpression);
+  });
 
-  const pathToRoot: FunctionCellExpression[] = [];
+  // Lowest precedence thus it is first in the rule chain
+  // The precedence of binary expressions is determined by how far down the Parse Tree
+  // The binary expression appears.
+  private additionExpression = this.RULE("additionExpression", () => {
+    // using labels can make the CST processing easier
+    this.SUBRULE(this.multiplicationExpression, { LABEL: "lhs" });
+    this.MANY(() => {
+      // consuming 'AdditionOperator' will consume either Plus or Minus as they are subclasses of AdditionOperator
+      this.CONSUME(AdditionOperator);
+      // the index "2" in SUBRULE2 is needed to identify the unique position in the grammar during runtime
+      this.SUBRULE2(this.multiplicationExpression, { LABEL: "rhs" });
+    });
+  });
 
-  while (rightPointer < formula.length) {
-    if (formula[rightPointer] === "(") {
-      const functionExpression = new FunctionCellExpression(
-        formula.slice(leftPointer, rightPointer) as FunctionName,
-        []
-      );
-      if (pathToRoot.length) {
-        pathToRoot[pathToRoot.length - 1].operands.push(functionExpression);
-      }
-      pathToRoot.push(functionExpression);
-
-      leftPointer = rightPointer + 1;
-      rightPointer += 1;
-    } else if (formula[rightPointer] === ",") {
-      if (pathToRoot.length) {
-        if (leftPointer !== rightPointer) {
-          // ignoring blank operands
-          pathToRoot[pathToRoot.length - 1].operands.push(
-            new LiteralCellExpression(formula.slice(leftPointer, rightPointer))
-          );
-        }
-      } else {
-        return new LiteralCellExpression(raw); // if a formula stars with a literal instead of function, we simply return the formula as is
-      }
-      leftPointer = rightPointer + 1;
-      rightPointer += 1;
-    } else if (formula[rightPointer] === ")") {
-      if (pathToRoot.length) {
-        if (leftPointer !== rightPointer) {
-          // ignoring blank operands
-          pathToRoot[pathToRoot.length - 1].operands.push(
-            new LiteralCellExpression(formula.slice(leftPointer, rightPointer))
-          );
-        }
-      } else {
-        console.warn("Saw closing parenthesis without opening parenthesis");
-        return new LiteralCellExpression(raw);
-      }
-
-      const parent = pathToRoot.pop()!; // pathToRoot.length was >1 before popping, as asserted in the previous if statement
-      if (!pathToRoot.length) {
-        if (rightPointer < formula.length - 1) {
-          console.warn("Finished parsing but still have more characters");
-          return new LiteralCellExpression(raw);
-        }
-        return parent;
-      }
-
-      leftPointer = rightPointer + 1;
-      rightPointer += 1;
-    } else {
-      rightPointer += 1;
+  private multiplicationExpression = this.RULE(
+    "multiplicationExpression",
+    () => {
+      this.SUBRULE(this.atomicExpression, { LABEL: "lhs" });
+      this.MANY(() => {
+        this.CONSUME(MultiplicationOperator);
+        // the index "2" in SUBRULE2 is needed to identify the unique position in the grammar during runtime
+        this.SUBRULE2(this.atomicExpression, { LABEL: "rhs" });
+      });
     }
+  );
+
+  private numberLiteral = this.RULE("numberLiteral", () => {
+    this.OPTION(() => this.CONSUME(Minus));
+    this.CONSUME(NonNegativeNumberLiteral);
+  });
+
+  private atomicExpression = this.RULE("atomicExpression", () => {
+    this.OR([
+      // parenthesisExpression has the highest precedence and thus it appears
+      // in the "lowest" leaf in the expression ParseTree.
+      { ALT: () => this.SUBRULE(this.parenthesisExpression) },
+      { ALT: () => this.SUBRULE(this.numberLiteral) },
+      // no way to confuse between CellReferenceLiteral and functionCall, as function name can't contain digits
+      { ALT: () => this.CONSUME(CellReferenceLiteral) },
+      { ALT: () => this.CONSUME(StringLiteral) },
+      { ALT: () => this.SUBRULE(this.functionCall) },
+    ]);
+  });
+
+  private parenthesisExpression = this.RULE("parenthesisExpression", () => {
+    this.CONSUME(LParen);
+    this.SUBRULE(this.additionExpression);
+    this.CONSUME(RParen);
+  });
+
+  private functionCall = this.RULE("functionCall", () => {
+    this.CONSUME(FunctionName);
+    this.CONSUME(LParen);
+    this.MANY_SEP({
+      SEP: Comma,
+      DEF: () => {
+        // Note: We might want to collect blank operand (e.g. MIN(1,,2) => [1,"",2]) in the future
+        this.OPTION(() => this.SUBRULE(this.additionExpression));
+      },
+    });
+    this.CONSUME(RParen);
+  });
+}
+
+export const parser = new FormulaParser();
+
+export function parseInput(raw: string) {
+  const lexingResult = FormulaLexer.tokenize(raw);
+  if (lexingResult.errors.length > 0) {
+    throw new Error("Lexing Error: " + parser.errors.join("\n"));
   }
-  return new LiteralCellExpression(raw);
+
+  // "input" is a setter which will reset the parser's state.
+  parser.input = lexingResult.tokens;
+  const cst = parser.formula() as CstNode;
+  if (parser.errors.length > 0) {
+    throw new Error("Parsing Error: " + parser.errors.join("\n"));
+  }
+  if (cst.name !== "formula") {
+    throw new Error(
+      `Parsing Error: Main node is not 'formula' but ${cst.name}`
+    );
+  }
+  return cst as FormulaCstNode;
 }

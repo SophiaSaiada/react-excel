@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { numberToLetter, stringArrayToEnum } from "../utils";
+import { normalizeCellKey, numberToLetter, stringArrayToEnum } from "../utils";
 
 const numberLettersCases: [number, string][] = [
   [0, "A"],
@@ -27,4 +27,19 @@ test("stringArrayToEnum", () => {
   }
   const keys = ["A", "B", "C"] as const;
   expect(stringArrayToEnum(keys)).toEqual(Expected);
+});
+
+test.each([
+  ["a1", "A1"],
+  ["a01", "A1"],
+  ["A01", "A1"],
+  ["a0001", "A1"],
+  ["Z02", "Z2"],
+  ["Z2", "Z2"],
+  ["z2", "Z2"],
+  ["zZz022", "ZZZ22"],
+  ["zZz002020", "ZZZ2020"],
+  ["zZza002020", "ZZZA2020"],
+])("normalizeCellKey: %s => %s", (raw, expected) => {
+  expect(normalizeCellKey(raw)).toBe(expected);
 });

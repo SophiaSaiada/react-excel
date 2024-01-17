@@ -15,3 +15,12 @@ export function stringArrayToEnum<T extends string>(
     return res;
   }, Object.create(null));
 }
+
+export const formatNumber = (num: number) =>
+  num.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 5,
+  });
+
+export const normalizeCellKey = (raw: string) =>
+  raw.toUpperCase().replace(/(?<=[A-Z])0+/, ""); // uppercase then remove leading zeros in column number

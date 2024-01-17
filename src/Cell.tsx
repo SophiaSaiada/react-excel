@@ -6,9 +6,31 @@ import {
   useState,
 } from "react";
 import clsx from "clsx";
+import { Immutable } from "immer";
 import { GridChildComponentProps } from "react-window";
 import { useStore } from "./store";
-import { numberToLetter } from "./utils";
+import { formatNumber, numberToLetter } from "./utils";
+import type { Cell as CellType } from "./core/types";
+
+function getEvaluationResultToDisplay(
+  cell: Immutable<CellType> | undefined
+): string {
+  if (!cell) {
+    return "";
+  }
+  const { evaluationResult } = cell;
+  if (evaluationResult.status === "SUCCESS") {
+    const { value } = evaluationResult;
+    if (typeof value === "number") {
+      return formatNumber(value);
+    }
+    return value;
+  }
+  if (evaluationResult.status === "ERROR") {
+    return evaluationResult.message;
+  }
+  return "⏳"; // this should never be visible to the user, as we invalidate cells and re-evaluate them in the same state transaction
+}
 
 function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
   const cellKey = `${numberToLetter(columnIndex)}${rowIndex + 1}`;
@@ -54,14 +76,7 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
     }
   }, []);
 
-  const evaluationResultToDisplay = value
-    ? value.evaluationResult.status === "SUCCESS"
-      ? value.evaluationResult.value
-      : value.evaluationResult.status === "ERROR"
-        ? value.evaluationResult.message
-        : // this should never be visible to the user, as we invalidate cells and re-evaluate them in the same state transaction
-          "⏳"
-    : "";
+  const evaluationResultToDisplay = getEvaluationResultToDisplay(value);
 
   return (
     <div style={style} title={evaluationResultToDisplay}>

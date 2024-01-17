@@ -1,26 +1,71 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { parseThenEvaluate, parseThenEvaluateShouldFail } from "./helpers";
+import { unquoteString } from "../core/evaluator";
+import { FUNCTIONS } from "../core/functions";
 
-test("test single function call", () => {
-  expect(parseThenEvaluate("=SUM()")).to.be.toEqual("0");
-  expect(parseThenEvaluate("=SUM(1)")).to.be.toEqual("1");
-  expect(parseThenEvaluate("=SUM(1,2)")).to.be.toEqual("3");
-  expect(parseThenEvaluate("=SUM(1,2,3)")).to.be.toEqual("6");
-  expect(parseThenEvaluate("=SUM(1,2,3,4)")).to.be.toEqual("10");
+test.each([
+  [String.raw`""`, String.raw``],
+  [String.raw`""""`, String.raw`"`],
+  [String.raw`""""""`, String.raw`""`],
+  [String.raw`""""""""`, String.raw`"""`],
+])("unquoteString %s", (quoted, expected) => {
+  expect(unquoteString(quoted)).to.equal(expected);
 });
 
-test("test nested function call", () => {
-  expect(parseThenEvaluate("=SUM(1,SUBTRACT(2,1))")).to.be.toEqual("2");
-  expect(parseThenEvaluate("=SUM(1,SUBTRACT(2,1),2)")).to.be.toEqual("4");
-  expect(
-    parseThenEvaluate("=SUM(1,SUBTRACT(2,1),MAX(3,2),MIN(1,2))")
-  ).to.be.toEqual("6");
-  expect(
-    parseThenEvaluate("=SUBTRACT(SUM(1,4),SUBTRACT(MAX(3,2),MIN(1,2)))")
-  ).to.be.toEqual("3");
-  expect(
-    parseThenEvaluate("=SUBTRACT(SUM(1,4,),SUBTRACT(MAX(3,2),,MIN(1,,2)),)")
-  ).to.be.toEqual("3");
+test.each([
+  ["=MaX(1)", 1],
+  ["=MaX(1,2)", 2],
+  ["=MaX(1,2,3)", 3],
+  ["=MaX(1,2,3,4)", 4],
+  ["=max(1,2,3,4)", 4],
+  [`=conCatenate("a","b",1)`, "ab1"],
+  [`=concatenate(-1.2)`, "-1.2"],
+  [`=ConCatenate(-1.3+1, "hi")`, "-0.3hi"],
+  [`=CONCATENATE(0.123450)`, "0.12345"],
+  [`=conCatenatE(0.12345501)`, "0.12346"],
+  [`=conCatenate(0.12345499)`, "0.12345"],
+])("test single function call: %s", (formula, expected) => {
+  expect(parseThenEvaluate(formula)).to.be.toEqual(expected);
+});
+
+test.each([
+  ["=Z99", ""],
+  ["=Z99+1", 1],
+  ["=1+Z99", 1],
+  ["=Z99-1", -1],
+  ["=1-Z99", 1],
+  ["=Z99*3", 0],
+  ["=3*Z99", 0],
+  ["=Z99/2", 0],
+  ["=2/Z99", Infinity],
+  ["=min(Z99,1)", 0],
+  ["=min(Z99,-1)", -1],
+  ["=min(-1, Z99)", -1],
+])("blank cells: %s", (formula, expected) => {
+  expect(parseThenEvaluate(formula)).to.be.toEqual(expected);
+});
+
+test("test nested expressions", () => {
+  expect(parseThenEvaluate("=1+2-1")).to.be.toEqual(2);
+  expect(parseThenEvaluate("=1+2-1+2")).to.be.toEqual(4);
+  expect(parseThenEvaluate("=1+2-1+MAX(3,2)+MIN(1,2)")).to.be.toEqual(6);
+  expect(parseThenEvaluate("=1+4-(MAX(3,2)-MIN(1,2))")).to.be.toEqual(3);
+  expect(parseThenEvaluate("=1+ 4-( MAX(3,,2)- MIN (,1,2,,))")).to.be.toEqual(
+    3
+  );
+});
+
+test.each([
+  ["=CONCATENATE(1,)", [1]],
+  ["=CONCATENATE(1,,,2)", [1, 2]],
+  ["=CONCATENATE(,,1,2)", [1, 2]],
+  ["=CONCATENATE(,)", []],
+  ["=CONCATENATE(,,)", []],
+])("ignore blank function operands: %s", (formula, expected) => {
+  const spy = vi.spyOn(FUNCTIONS, "CONCATENATE");
+  parseThenEvaluate(formula);
+  expect(spy).toHaveBeenCalledOnce();
+  expect(spy).toHaveBeenCalledWith(expected);
 });
 
 test("test unknown function", () => {
@@ -32,32 +77,40 @@ test("test unknown function", () => {
   );
 });
 
-test("test function error", () => {
-  expect(parseThenEvaluateShouldFail("=SUBTRACT(1)")).to.be.equal(
-    "SUBTRACT: Expected 2 operands got 1"
-  );
-  expect(parseThenEvaluateShouldFail("=SUBTRACT(1,2,3)")).to.be.equal(
-    "SUBTRACT: Expected 2 operands got 3"
-  );
-  expect(parseThenEvaluateShouldFail("=MIN()")).to.be.equal(
-    "MIN: Got no operands"
-  );
-  expect(parseThenEvaluateShouldFail("=MAX()")).to.be.equal(
-    "MAX: Got no operands"
-  );
+test.each([
+  ["=MIN()", "MIN: Got no operands"],
+  ["=MAX()", "MAX: Got no operands"],
+  [`=MAX("a")`, "MAX: Got non-numeric operands"],
+  [`=MIN(1,"a")`, "MIN: Got non-numeric operands"],
+  [`=1+"x"+2`, "Cannot add or subtract a string"],
+  [`="x"+"a"`, "Cannot add or subtract a string"],
+  [`="x"*2*2`, "Cannot multiply or divide a string"],
+  [`="x"*"x"`, "Cannot multiply or divide a string"],
+  [`="x"*2`, "Cannot multiply or divide a string"],
+])("test function error: %s", (formula, expected) => {
+  expect(parseThenEvaluateShouldFail(formula)).to.be.equal(expected);
 });
 
-test("test error propagation", () => {
-  expect(parseThenEvaluateShouldFail("=SUM(1,SUBTRACT(1))")).to.be.equal(
-    "SUBTRACT: Expected 2 operands got 1"
-  );
-  expect(parseThenEvaluateShouldFail("=SUM(SUBTRACT(1,2,3),1)")).to.be.equal(
-    "SUBTRACT: Expected 2 operands got 3"
-  );
+test.each([
+  ["=MIN(1,MAX())", "MAX: Got no operands"],
+  ["=1+MAX()", "MAX: Got no operands"],
+  ["=1*MAX()", "MAX: Got no operands"],
+  [`=MAX(MIN("1",2,3),1)`, "MIN: Got non-numeric operands"],
+  [`=2-MAX(MIN("1",2,3),1)*3`, "MIN: Got non-numeric operands"],
+])("test error propagation: %s", (formula, expected) => {
+  expect(parseThenEvaluateShouldFail(formula)).to.be.equal(expected);
 });
 
-test("dynamic references should fail", () => {
-  expect(parseThenEvaluateShouldFail("=REF(REF(A1))", new Map())).to.be.equal(
-    "Dynamic cell references are not supported"
-  );
+test.each([
+  ["=1+2*3", 7],
+  ["=1-(1+2)/2-3*4", -12.5],
+  ["=1/2-(1+2)/(2/3)-3*(6*4)", -76],
+  ["=1/(2-1)+(2/2/3)-3*6*4", -70.66666666666667],
+  ["=100000/(2/(2/4/6+2))", 104166.66666666667],
+  ["=2/min(3,2)", 1],
+  ["=-1", -1],
+  ["=2/min(3,max(1,-1))", 2],
+  ["=2/min(3,max(1,0.2))", 2],
+])("%s => %s", (formula, expected) => {
+  expect(parseThenEvaluate(formula)).to.be.equal(expected);
 });
