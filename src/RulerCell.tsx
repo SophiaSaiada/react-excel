@@ -1,6 +1,6 @@
 import "react";
 import clsx from "clsx";
-import { numberToLetter } from "./utils";
+import { cellKeyToIndexes, numberToLetter } from "./utils";
 import { ListChildComponentProps } from "react-window";
 import Cell from "./Cell";
 import { useStore } from "./store";
@@ -17,18 +17,23 @@ const RulerCell = ({
       ? state.hoveredCell?.column === index
       : state.hoveredCell?.row === index
   );
+  const isActive = useStore((state) => {
+    if (!state.formulaEditorProps.show) {
+      return false;
+    }
+    const { column, row } = cellKeyToIndexes(state.formulaEditorProps.cellKey);
+    return mode === "HORIZONTAL" ? column === index : row === index;
+  });
 
   return (
     <div
       style={style}
       className={clsx(
-        Cell.SHARED_STYLE.always,
-        "leading-10 text-zinc-400",
-        { "border-t": mode === "HORIZONTAL" || index === 0 },
-        { "border-l": mode === "VERTICAL" || index === 0 },
+        Cell.SHARED_STYLE,
+        "w-16 max-w-16 px-2 leading-10 text-zinc-400 transition-colors duration-0 text-center",
         "border-r border-b border-zinc-800",
-        { notHover: !isHovered },
-        { "bg-zinc-800": isHovered }
+        { "bg-zinc-800": isHovered || isActive },
+        { "border-b-2 border-b-green-600": isActive }
       )}
     >
       {mode === "HORIZONTAL" ? numberToLetter(index) : (index + 1).toString()}

@@ -4,10 +4,18 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/sheets.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono&display=swap"
+      rel="stylesheet"
+    />
     <title>Sheets</title>
   </head>
-  <body class="bg-zinc-900 text-white place-items-center flex m-0 h-screen dark">
-    <div id="root" class="grid grid-cols-[4rem_1fr]"></div>
+  <body
+    class="bg-zinc-900 text-white place-items-center flex m-0 h-screen w-screen dark p-0 overflow-hidden"
+  >
+    <div id="root" class="absolute top-0 left-0 right-0 bottom-0 grid grid-cols-[4rem_1fr] grid-rows-[2.5rem_1fr]"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

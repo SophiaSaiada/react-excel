@@ -1,5 +1,11 @@
 import { expect, test } from "vitest";
-import { normalizeCellKey, numberToLetter, stringArrayToEnum } from "../utils";
+import {
+  cellKeyToIndexes,
+  letterToNumber,
+  normalizeCellKey,
+  numberToLetter,
+  stringArrayToEnum,
+} from "../utils";
 
 const numberLettersCases: [number, string][] = [
   [0, "A"],
@@ -10,13 +16,35 @@ const numberLettersCases: [number, string][] = [
   [26, "AA"],
   [51, "AZ"],
   [52, "BA"],
-  [52, "BA"],
   [676 + 26, "AAA"],
   [17576 + 702, "AAAA"],
 ];
 
 test.each(numberLettersCases)("numberToLetter: %i -> %s", (number, letter) => {
   expect(numberToLetter(number)).toBe(letter);
+});
+
+test.each(numberLettersCases)("letterToNumber: %i <- %s", (number, letter) => {
+  expect(letterToNumber(letter)).toBe(number);
+});
+
+test.each([
+  ["A1", [0, 0]],
+  ["C4", [2, 3]],
+  ["J56", [9, 55]],
+  ["K999", [10, 998]],
+  ["Z10", [25, 9]],
+  ["AA909", [26, 908]],
+  ["AZ100", [51, 99]],
+  ["BA1", [52, 0]],
+  ["BA2", [52, 1]],
+  ["AAA32", [676 + 26, 31]],
+  ["AAAA43", [17576 + 702, 42]],
+])("cellKeyToIndexes: %i -> %s", (cellKey, indexes) => {
+  expect(cellKeyToIndexes(cellKey)).to.be.deep.equal({
+    column: indexes[0],
+    row: indexes[1],
+  });
 });
 
 test("stringArrayToEnum", () => {

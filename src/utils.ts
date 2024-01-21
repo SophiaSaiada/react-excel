@@ -1,3 +1,5 @@
+import { CELL_KEY_REGEX } from "./constants";
+
 export function numberToLetter(number: number): string {
   let result = "";
   while (number >= 0) {
@@ -5,6 +7,20 @@ export function numberToLetter(number: number): string {
     number = (number - (number % 26)) / 26 - 1;
   }
   return result;
+}
+
+export function letterToNumber(letter: string): number {
+  let result = 0;
+  for (let i = 0; i < letter.length; i++) {
+    result *= 26;
+    result += letter.charCodeAt(i) - 64;
+  }
+  return result - 1;
+}
+
+export function cellKeyToIndexes(key: string): { row: number; column: number } {
+  const [, column, row] = key.match(CELL_KEY_REGEX)!;
+  return { column: letterToNumber(column), row: parseInt(row) - 1 };
 }
 
 export function stringArrayToEnum<T extends string>(

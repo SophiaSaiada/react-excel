@@ -11,6 +11,8 @@ import RulerCell from "./RulerCell";
 import { SHEET_HEIGHT, SHEET_WIDTH } from "./constants";
 import { useStore } from "./store";
 import baseSheet from "./baseSheet.json";
+import FormulaEditor from "./FormulaEditor";
+import useScreenSize from "./hooks/useScreenSize";
 
 const storeInitialized = false;
 const Table = () => {
@@ -39,15 +41,18 @@ const Table = () => {
     []
   );
 
+  const { width: windowWidth, height: windowHeight } = useScreenSize();
+
   return (
     <>
+      <div className="bg-zinc-900 border-b border-r border-zinc-800"></div>
+
       <VariableSizeList
         ref={stickyRowListRef}
         itemData={{ mode: "HORIZONTAL" }}
         style={{ overflow: "hidden" }}
-        className="col-start-2"
         height={2.5 * rem}
-        width={window.screen.availWidth * 0.8 - 4 * rem}
+        width={windowWidth - 4 * rem}
         layout="horizontal"
         itemCount={SHEET_WIDTH}
         itemSize={(index) => (index === SHEET_WIDTH - 1 ? 8 * rem : 4 * rem)}
@@ -59,7 +64,7 @@ const Table = () => {
         ref={stickyColumnListRef}
         itemData={{ mode: "VERTICAL" }}
         style={{ overflowY: "hidden" }}
-        height={window.screen.availHeight * 0.8}
+        height={windowHeight - 2.5 * rem}
         layout="vertical"
         itemCount={SHEET_HEIGHT}
         itemSize={(index) =>
@@ -73,15 +78,16 @@ const Table = () => {
       <FixedSizeGrid
         columnCount={SHEET_HEIGHT}
         onScroll={onScroll}
-        // TODO: calculate width based on the content of the item.
         columnWidth={4 * rem}
-        height={window.screen.availHeight * 0.8}
-        width={window.screen.availWidth * 0.8 - 4 * rem}
+        height={windowHeight - 2.5 * rem}
+        width={windowWidth - 4 * rem}
         rowCount={SHEET_WIDTH}
         rowHeight={2.5 * rem}
       >
         {Cell}
       </FixedSizeGrid>
+
+      <FormulaEditor />
     </>
   );
 };
