@@ -79,10 +79,7 @@ function FormulaEditor() {
   // so we update it only when the user focuses another cell, or hit Escape or Cmd+Enter, even if it's outside the formula editor
   useEffect(() => {
     const listener = (e: globalThis.KeyboardEvent) => {
-      if (
-        e.key === "Escape" ||
-        (e.key === "Enter" && (e.ctrlKey || e.metaKey))
-      ) {
+      if (e.key === "Escape" || (e.key === "Enter" && !e.shiftKey)) {
         textAreaRef.current?.blur();
         setCell(cellKey, intermediateValue);
         hideFormulaEditor();
