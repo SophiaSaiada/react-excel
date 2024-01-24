@@ -5,8 +5,8 @@ import { updateCellAndDependents } from "./core";
 
 type FormulaEditorProps = {
   cellKey: string;
-  top: number | string | undefined;
-  left: number | string | undefined;
+  top: number;
+  left: number;
   show: boolean;
 };
 
@@ -36,9 +36,10 @@ export const useStore = create<Store>((set) => ({
   },
 
   formulaEditorProps: {
-    top: undefined,
-    left: undefined,
+    top: 0,
+    left: 0,
     cellKey: "A1",
+    // all default values until now are irrelevant as the editor is hidden by default
     show: false,
   },
   showFormulaEditor(props) {
