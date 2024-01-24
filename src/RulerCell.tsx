@@ -5,6 +5,18 @@ import { ListChildComponentProps } from "react-window";
 import Cell from "./Cell";
 import { useStore } from "./store";
 
+function isCellKeyMatchesRulerCellIndex(
+  mode: "VERTICAL" | "HORIZONTAL",
+  cellKey: string | null,
+  index: number
+) {
+  if (cellKey === null) {
+    return false;
+  }
+  const { column, row } = cellKeyToIndexes(cellKey);
+  return mode === "HORIZONTAL" ? column === index : row === index;
+}
+
 const RulerCell = ({
   index,
   style,
@@ -13,17 +25,17 @@ const RulerCell = ({
   mode: "VERTICAL" | "HORIZONTAL";
 }>) => {
   const isHovered = useStore((state) =>
-    mode === "HORIZONTAL"
-      ? state.hoveredCell?.column === index
-      : state.hoveredCell?.row === index
+    isCellKeyMatchesRulerCellIndex(mode, state.hoveredCell, index)
   );
-  const isActive = useStore((state) => {
-    if (!state.formulaEditorProps.show) {
-      return false;
-    }
-    const { column, row } = cellKeyToIndexes(state.formulaEditorProps.cellKey);
-    return mode === "HORIZONTAL" ? column === index : row === index;
-  });
+  const isActive = useStore(
+    (state) =>
+      state.formulaEditorProps.show &&
+      isCellKeyMatchesRulerCellIndex(
+        mode,
+        state.formulaEditorProps.cellKey,
+        index
+      )
+  );
 
   return (
     <div

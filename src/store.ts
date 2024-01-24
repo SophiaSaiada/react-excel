@@ -14,16 +14,8 @@ type Store = Immutable<{
   cells: ReadonlyMap<string, Cell>;
   setCell: (key: string, value: string) => void;
 
-  hoveredCell: {
-    row: number;
-    column: number;
-  } | null;
-  setHoveredCell: (
-    value: {
-      row: number;
-      column: number;
-    } | null
-  ) => void;
+  hoveredCell: string | null;
+  setHoveredCell: (value: string | null) => void;
 
   formulaEditorProps: FormulaEditorProps;
   showFormulaEditor: (props: FormulaEditorProps) => void;

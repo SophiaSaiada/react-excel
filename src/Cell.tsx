@@ -19,8 +19,8 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
 
   const setHoveredCell = useStore((state) => state.setHoveredCell);
   const onMouseEnter = useCallback(
-    () => setHoveredCell({ column: columnIndex, row: rowIndex }),
-    [columnIndex, rowIndex, setHoveredCell]
+    () => setHoveredCell(cellKey),
+    [cellKey, setHoveredCell]
   );
   const onMouseLeave = useCallback(
     () => setHoveredCell(null),
