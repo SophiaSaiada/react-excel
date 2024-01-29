@@ -17,6 +17,12 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
       state.formulaEditorProps.cellKey === cellKey
   );
 
+  const isSelected = useStore(
+    (state) =>
+      state.formulaEditorProps.show &&
+      state.formulaEditorProps.highlightedCellKey === cellKey
+  );
+
   const setHoveredCell = useStore((state) => state.setHoveredCell);
   const onMouseEnter = useCallback(
     () => setHoveredCell(cellKey),
@@ -38,7 +44,18 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
   const { valueToDisplay, isError } = getEvaluationResultToDisplay(value);
 
   return (
-    <div className="group" style={style} onClick={onClick} ref={thisRef}>
+    <div
+      className={clsx(
+        "group",
+        "outline-dotted outline-offset-2 transition-[outline-color] duration-75",
+        isSelected
+          ? (isError ? "outline-red-700" : "outline-green-700") + " z-20"
+          : "outline-transparent"
+      )}
+      style={style}
+      onClick={onClick}
+      ref={thisRef}
+    >
       {valueToDisplay.length > 5 && (
         <div
           className={clsx(
@@ -58,6 +75,7 @@ function Cell({ columnIndex, rowIndex, style }: GridChildComponentProps) {
           Cell.SHARED_STYLE,
           "min-w-16 w-16 text-nowrap leading-10 text-left px-2 bg-zinc-900 border-b border-r border-zinc-800",
           "hover:border-b-2 hover:bg-zinc-800",
+          "overflow-hidden",
           isError && "text-red-500",
           isActiveCell && [
             "border-b-2 bg-zinc-700",

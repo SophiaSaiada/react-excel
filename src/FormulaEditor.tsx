@@ -3,6 +3,43 @@ import clsx from "clsx";
 import { useStore } from "./store";
 import { useRem } from "./hooks/style";
 import { getEvaluationResultToDisplay } from "./getEvaluationResultToDisplay";
+import { CellReferenceLiteral, tokenize } from "./core/lexer";
+import { tokenMatcher } from "chevrotain";
+import { EQUAL_SIGN } from "./constants";
+import { normalizeCellKey } from "./utils";
+
+const useSyncHighlightedCellRange = (
+  textArea: HTMLTextAreaElement | null,
+  show: boolean
+) => {
+  const setHighlightedCellKey = useStore(
+    (state) => state.setHighlightedCellKey
+  );
+  const syncHighlightedCellRange = useCallback(() => {
+    if (!show || textArea === null) {
+      setHighlightedCellKey(null);
+      return;
+    }
+    if (!textArea.value.startsWith(EQUAL_SIGN)) {
+      // cell isn't a formula
+      setHighlightedCellKey(null);
+      return;
+    }
+    const activeReferencedCellKey = tokenize(textArea.value).tokens.filter(
+      (token) =>
+        token.startOffset <= textArea.selectionStart &&
+        (token.endOffset === undefined ||
+          textArea.selectionEnd <= token.endOffset + 1) &&
+        tokenMatcher(token, CellReferenceLiteral)
+    )[0]?.image;
+    setHighlightedCellKey(
+      activeReferencedCellKey === undefined
+        ? null
+        : normalizeCellKey(activeReferencedCellKey)
+    );
+  }, [textArea, show, setHighlightedCellKey]);
+  return syncHighlightedCellRange;
+};
 
 // Updates the height and width of a <textarea> when the value changes.
 const useAutoSizeTextArea = (
@@ -91,6 +128,19 @@ function FormulaEditor() {
     return () => document.removeEventListener("keydown", listener);
   }, [setCell, cellKey, intermediateValue, hideFormulaEditor]);
 
+  const syncHighlightedCellRange = useSyncHighlightedCellRange(
+    textAreaRef.current,
+    show
+  );
+  useEffect(
+    () => syncHighlightedCellRange(),
+    [
+      syncHighlightedCellRange,
+      // it's here to support cases in which the new cell's formula ends with cell reference
+      intermediateValue,
+    ]
+  );
+
   const { valueToDisplay, isError } = getEvaluationResultToDisplay(cell);
 
   return (
@@ -122,6 +172,8 @@ function FormulaEditor() {
           spellCheck={false}
           value={intermediateValue}
           onChange={onChange}
+          onKeyUp={syncHighlightedCellRange}
+          onClick={syncHighlightedCellRange}
           ref={textAreaRef}
         />
       </div>

@@ -8,6 +8,7 @@ type FormulaEditorProps = {
   top: number;
   left: number;
   show: boolean;
+  highlightedCellKey: string | null;
 };
 
 type Store = Immutable<{
@@ -18,8 +19,11 @@ type Store = Immutable<{
   setHoveredCell: (value: string | null) => void;
 
   formulaEditorProps: FormulaEditorProps;
-  showFormulaEditor: (props: FormulaEditorProps) => void;
+  showFormulaEditor: (
+    props: Omit<FormulaEditorProps, "highlightedCellKey">
+  ) => void;
   hideFormulaEditor: () => void;
+  setHighlightedCellKey: (value: string | null) => void;
 }>;
 
 export const useStore = create<Store>((set) => ({
@@ -41,13 +45,28 @@ export const useStore = create<Store>((set) => ({
     cellKey: "A1",
     // all default values until now are irrelevant as the editor is hidden by default
     show: false,
+    highlightedCellKey: null,
   },
   showFormulaEditor(props) {
-    set({ formulaEditorProps: { ...props, show: true } });
+    set({
+      formulaEditorProps: { ...props, show: true, highlightedCellKey: null },
+    });
   },
   hideFormulaEditor() {
     set((state) => ({
-      formulaEditorProps: { ...state.formulaEditorProps, show: false },
+      formulaEditorProps: {
+        ...state.formulaEditorProps,
+        show: false,
+        highlightedCellKey: null,
+      },
+    }));
+  },
+  setHighlightedCellKey(value) {
+    set((state) => ({
+      formulaEditorProps: {
+        ...state.formulaEditorProps,
+        highlightedCellKey: value,
+      },
     }));
   },
 }));

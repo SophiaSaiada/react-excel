@@ -4,7 +4,6 @@ import {
   CellReferenceLiteral,
   Comma,
   Equal,
-  FormulaLexer,
   FunctionName,
   LParen,
   Minus,
@@ -13,6 +12,7 @@ import {
   RParen,
   StringLiteral,
   allTokens,
+  tokenize,
 } from "./lexer.ts"; // the .ts extension is needed to make this file executable with ts-node
 import { FormulaCstNode } from "./generated/FormulaParser";
 
@@ -94,7 +94,7 @@ class FormulaParser extends CstParser {
 export const parser = new FormulaParser();
 
 export function parseInput(raw: string) {
-  const lexingResult = FormulaLexer.tokenize(raw);
+  const lexingResult = tokenize(raw);
   if (lexingResult.errors.length > 0) {
     throw new Error("Lexing Error: " + parser.errors.join("\n"));
   }

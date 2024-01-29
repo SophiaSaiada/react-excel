@@ -1,9 +1,9 @@
 import { Lexer, createToken } from "chevrotain";
-import { POSITIVE_FLOAT_REGEX } from "../constants.ts";
+import { EQUAL_SIGN, POSITIVE_FLOAT_REGEX } from "../constants.ts";
 
 export const Equal = createToken({
   name: "Equal",
-  pattern: /=/,
+  pattern: EQUAL_SIGN,
 });
 
 // using the NA pattern marks this Token class as 'irrelevant' for the Lexer.
@@ -85,4 +85,8 @@ export const allTokens = [
   Comma,
 ];
 
-export const FormulaLexer = new Lexer(allTokens);
+const FormulaLexer = new Lexer(allTokens);
+
+export function tokenize(raw: string) {
+  return FormulaLexer.tokenize(raw);
+}
